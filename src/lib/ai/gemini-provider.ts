@@ -7,7 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 import { AIProvider, AIProviderHealth } from './types.ts';
 
 export class GeminiProvider implements AIProvider {
-  name = 'Gemini 3.8 Flash (Cloud)';
+  name = 'Gemini 1.5 Flash (Cloud)';
   private client: GoogleGenAI | null = null;
   private apiKey: string | null = null;
 
@@ -41,7 +41,7 @@ export class GeminiProvider implements AIProvider {
     try {
       const start = Date.now();
       const response = await this.client.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-1.5-flash',
         contents: 'ping',
       });
       const latency = Date.now() - start;
@@ -50,7 +50,7 @@ export class GeminiProvider implements AIProvider {
           providerName: this.name,
           status: 'HEALTHY',
           latencyMs: latency,
-          details: 'Connected to Gemini API (gemini-3.8-flash)',
+          details: 'Connected to Gemini API (gemini-1.5-flash)',
           isPrimary: true,
         };
       }
@@ -98,7 +98,7 @@ ${context?.knowledgeChunks?.join('\n---\n') || 'General cosmetic and restorative
 `;
 
     const response = await this.client.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         systemInstruction: context?.systemInstruction || systemPrompt,

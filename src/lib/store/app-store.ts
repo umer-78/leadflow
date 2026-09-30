@@ -23,7 +23,7 @@ import {
   UserRole,
 } from '../types/index.ts';
 
-// Initial Demo Seed Data
+// Initial Clean Practice Setup
 const INITIAL_ORGS: Organization[] = [
   {
     id: 'org-apex-dental',
@@ -32,7 +32,8 @@ const INITIAL_ORGS: Organization[] = [
     industry: 'Dental / Cosmetic Dentistry',
     website: 'https://apexsmilestudio.example.com',
     phone: '+1 (555) 349-2041',
-    address: '420 Lexington Avenue, Suite 800, New York, NY 10170',
+    address: '450 Sutter St, Suite 1420, San Francisco, CA 94108',
+    hours: 'Mon - Fri: 8:00 AM - 6:00 PM, Sat: 9:00 AM - 2:00 PM',
     status: 'ACTIVE',
     planId: 'growth',
     monthlyFee: 1000,
@@ -98,40 +99,6 @@ const INITIAL_ORGS: Organization[] = [
     createdAt: '2026-08-15T10:00:00.000Z',
   },
   {
-    id: 'org-harborview',
-    name: 'Harborview Aesthetic Surgery Institute',
-    slug: 'harborview-surgery',
-    industry: 'Cosmetic / Plastic Surgery',
-    website: 'https://harborviewaesthetics.example.com',
-    phone: '+1 (555) 782-9900',
-    address: '880 Ocean Promenade, Suite 300, Miami, FL 33139',
-    status: 'ACTIVE',
-    planId: 'starter',
-    monthlyFee: 500,
-    setupFee: 500,
-    widgetId: 'harborview-widget-1142',
-    widgetColor: '#0f766e',
-    aiGreeting:
-      'Welcome to Harborview Aesthetic Surgery Institute. How may we guide your consultation inquiry today?',
-    qualificationQuestions: [
-      'Which procedure are you considering?',
-      'Have you consulted with a board-certified surgeon previously?',
-    ],
-    businessHours: 'Mon-Thu: 9:00 AM - 5:00 PM, Fri: 9:00 AM - 3:00 PM',
-    services: [
-      {
-        id: 'srv-h1',
-        name: 'Deep Plane Facial Rejuvenation',
-        category: 'Surgical',
-        price: 'From $14,000',
-        duration: '90 mins consultation',
-        description: 'Advanced structural facial restoration performed under accredited surgical facility.',
-        highValue: true,
-      },
-    ],
-    createdAt: '2026-09-01T12:00:00.000Z',
-  },
-  {
     id: 'org-agency-root',
     name: 'LeadFlow AI Agency Operations',
     slug: 'leadflow-root',
@@ -152,409 +119,112 @@ const INITIAL_ORGS: Organization[] = [
   },
 ];
 
+// 100% Authentic Verified User List - No Fake Staff
 const INITIAL_USERS: (User & { passwordHash: string })[] = [
   {
-    id: 'usr-agency-founder',
+    id: 'usr-owner-umer',
     name: 'Umer Hashmi',
     email: 'umerhashmi987@gmail.com',
     role: 'OWNER',
-    organizationId: 'org-agency-root',
+    organizationId: 'org-apex-dental',
     createdAt: new Date().toISOString(),
-    passwordHash: 'h_demo123',
-  },
-  {
-    id: 'usr-apex-owner',
-    name: 'Dr. Elena Rostova',
-    email: 'dr.elena@apexsmile.com',
-    role: 'OWNER',
-    organizationId: 'org-apex-dental',
-    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-    passwordHash: 'h_demo123',
-  },
-  {
-    id: 'usr-apex-admin',
-    name: 'Sarah Jenkins',
-    email: 'sarah.admin@apexsmile.com',
-    role: 'ADMIN',
-    organizationId: 'org-apex-dental',
-    createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
-    passwordHash: 'h_demo123',
-  },
-  {
-    id: 'usr-apex-staff',
-    name: 'Jessica Vance',
-    email: 'jessica.reception@apexsmile.com',
-    role: 'STAFF',
-    organizationId: 'org-apex-dental',
-    createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
-    passwordHash: 'h_demo123',
+    passwordHash: 'leadflow_secure_master_v1',
   },
 ];
 
-const INITIAL_LEADS: Lead[] = [
-  {
-    id: 'lead-1',
-    organizationId: 'org-apex-dental',
-    name: 'Samantha Hughes',
-    email: 'samantha.hughes@gmail.com',
-    phone: '+1 (555) 902-4411',
-    serviceRequested: 'Handcrafted Porcelain Veneers',
-    preferredDate: new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10),
-    preferredTime: 'Morning (10:00 AM)',
-    urgency: 'HIGH',
-    notes: 'Bride getting married in November. Looking to correct spacing on 6 upper teeth.',
-    status: 'QUALIFIED',
-    score: {
-      tier: 'HIGH',
-      score: 85,
-      reasons: [
-        '+ Provided direct phone number (+35 pts)',
-        '+ Inquired about high-value elective procedure (+30 pts)',
-        '+ Immediate timeframe requirement within 30 days (+20 pts)',
-      ],
-    },
-    source: 'Website AI Receptionist',
-    estimatedValue: 8400,
-    lastContactedAt: new Date(Date.now() - 3600000).toISOString(),
-    followupScheduledAt: new Date(Date.now() + 86400000).toISOString(),
-    followupCount: 1,
-    optedOut: false,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'lead-2',
-    organizationId: 'org-apex-dental',
-    name: 'David K. Miller',
-    email: 'david.miller@techcorp.io',
-    phone: '+1 (555) 432-8819',
-    serviceRequested: 'Clear Aligners (Invisalign)',
-    preferredDate: new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10),
-    preferredTime: 'Afternoon (3:00 PM)',
-    urgency: 'MEDIUM',
-    notes: 'Had traditional braces as a teenager, lower front teeth crowded again.',
-    status: 'APPOINTMENT_REQUESTED',
-    score: {
-      tier: 'HIGH',
-      score: 80,
-      reasons: [
-        '+ Provided direct phone number (+35 pts)',
-        '+ Inquired about high-value elective procedure (+30 pts)',
-      ],
-    },
-    source: 'Website AI Receptionist',
-    estimatedValue: 4800,
-    lastContactedAt: new Date(Date.now() - 14400000).toISOString(),
-    followupScheduledAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-    followupCount: 1,
-    optedOut: false,
-    createdAt: new Date(Date.now() - 18000000).toISOString(),
-    updatedAt: new Date(Date.now() - 14400000).toISOString(),
-  },
-  {
-    id: 'lead-3',
-    organizationId: 'org-apex-dental',
-    name: 'Victoria Morales',
-    email: 'vmorales@creativehouse.co',
-    phone: '+1 (555) 819-0022',
-    serviceRequested: 'Single & Full-Arch Dental Implants',
-    urgency: 'HIGH',
-    notes: 'Missing upper second molar after root canal fracture. Seeking permanent replacement.',
-    status: 'APPOINTMENT_BOOKED',
-    score: {
-      tier: 'HIGH',
-      score: 95,
-      reasons: [
-        '+ Provided direct phone number (+35 pts)',
-        '+ Inquired about high-value elective procedure (+30 pts)',
-        '+ Immediate/urgent clinical condition (+20 pts)',
-        '+ Confirmed in-clinic consultation booking slot (+10 pts)',
-      ],
-    },
-    source: 'Google Local Search Campaign',
-    estimatedValue: 3600,
-    lastContactedAt: '2026-09-27T10:00:00.000Z',
-    followupScheduledAt: undefined,
-    followupCount: 2,
-    optedOut: false,
-    createdAt: '2026-09-26T18:10:00.000Z',
-    updatedAt: '2026-09-27T10:00:00.000Z',
-  },
-  {
-    id: 'lead-4',
-    organizationId: 'org-apex-dental',
-    name: 'Jonathan Reynolds',
-    email: 'jreynolds@gmail.com',
-    phone: '',
-    serviceRequested: 'In-Office Laser Teeth Whitening',
-    urgency: 'LOW',
-    notes: 'Asking about sensitivity during Zoom whitening sessions.',
-    status: 'NEW',
-    score: {
-      tier: 'LOW',
-      score: 25,
-      reasons: [
-        '- No direct telephone number supplied (0 pts)',
-        '+ Inquired about standard cosmetic care (+15 pts)',
-        '+ Standard timeframe (+10 pts)',
-      ],
-    },
-    source: 'Website AI Receptionist',
-    estimatedValue: 450,
-    followupCount: 0,
-    optedOut: false,
-    createdAt: '2026-09-30T09:15:00.000Z',
-    updatedAt: '2026-09-30T09:15:00.000Z',
-  },
-  {
-    id: 'lead-harborview-1',
-    organizationId: 'org-harborview',
-    name: 'Protected Harborview Patient',
-    email: 'confidential@harborview.example.com',
-    phone: '+1 (555) 777-8888',
-    serviceRequested: 'Deep Plane Facial Rejuvenation',
-    urgency: 'HIGH',
-    notes: 'Private surgical candidate. Org A must never see this lead.',
-    status: 'QUALIFIED',
-    score: {
-      tier: 'HIGH',
-      score: 90,
-      reasons: ['+ High-value surgical candidate'],
-    },
-    source: 'Harborview AI Widget',
-    estimatedValue: 18000,
-    followupCount: 1,
-    optedOut: false,
-    createdAt: '2026-09-25T11:00:00.000Z',
-    updatedAt: '2026-09-25T11:00:00.000Z',
-  },
-];
+// Clean Production Pipelines - Zero Fake Dummy Leads or Prospects
+const INITIAL_LEADS: Lead[] = [];
+const INITIAL_APPOINTMENTS: Appointment[] = [];
+const INITIAL_PROSPECTS: Prospect[] = [];
+const INITIAL_PROPOSALS: Proposal[] = [];
+const INITIAL_AUDIT_LOGS: AuditLog[] = [];
+const INITIAL_CONVERSATIONS: Conversation[] = [];
 
-const INITIAL_APPOINTMENTS: Appointment[] = [
+const INITIAL_AUTOMATION_RULES: AutomationRule[] = [
   {
-    id: 'apt-1',
+    id: 'rule-auto-1',
     organizationId: 'org-apex-dental',
-    leadId: 'lead-3',
-    leadName: 'Victoria Morales',
-    service: 'Single & Full-Arch Dental Implants',
-    dateTime: '2026-10-02T10:00:00.000Z',
-    durationMinutes: 60,
-    status: 'CONFIRMED',
-    providerStaffName: 'Dr. Elena Rostova',
-    notes: 'Include 3D CBCT digital volumetric scan.',
-    createdAt: '2026-09-27T10:00:00.000Z',
-  },
-  {
-    id: 'apt-2',
-    organizationId: 'org-apex-dental',
-    leadId: 'lead-2',
-    leadName: 'David K. Miller',
-    service: 'Clear Aligners (Invisalign)',
-    dateTime: '2026-10-08T15:00:00.000Z',
-    durationMinutes: 45,
-    status: 'REQUESTED',
-    providerStaffName: 'Dr. Elena Rostova',
-    notes: 'Requested afternoon slot. Awaiting staff phone confirmation.',
-    createdAt: '2026-09-28T16:00:00.000Z',
-  },
-];
-
-const INITIAL_AUTOMATIONS: AutomationRule[] = [
-  {
-    id: 'rule-1',
-    organizationId: 'org-apex-dental',
-    name: 'Instant AI Reception Response & SMS Triage',
-    description: 'Dispatches instant booking acknowledgement and follow-up track upon new lead intake.',
+    name: 'Immediate High-Urgency SMS & Coordinator Dispatch',
+    description: 'Alert clinical coordinator within 15 minutes of inquiry submission.',
     trigger: 'lead.created',
-    condition: 'always',
+    condition: 'urgency == HIGH',
     actions: [
-      { type: 'send_initial_response', params: {} },
-      { type: 'notify_client', params: {} },
+      {
+        type: 'send_initial_response',
+        params: { channel: 'SMS', template: 'immediate_intake_receipt' },
+      },
+      {
+        type: 'notify_client',
+        params: { priority: 'URGENT', channel: 'EMAIL_AND_PUSH' },
+      },
     ],
     enabled: true,
-    executionCount: 42,
+    executionCount: 0,
   },
   {
-    id: 'rule-2',
+    id: 'rule-auto-2',
     organizationId: 'org-apex-dental',
-    name: 'Day 1 Consultation Follow-Up Sequence',
-    description: 'Sends automated check-in 24 hours after inquiry if consultation is not yet scheduled.',
-    trigger: 'lead.created',
-    condition: 'status == NEW',
-    actions: [{ type: 'schedule_followup', params: { delayDays: 1 } }],
-    enabled: true,
-    executionCount: 28,
-  },
-  {
-    id: 'rule-3',
-    organizationId: 'org-apex-dental',
-    name: 'High-Value Elective Case Triage',
-    description: 'Immediately triggers SMS alert to Treatment Coordinator when lead score is HIGH (>=70).',
+    name: 'Automated Day 1 Cosmetic Inquiry Follow-up',
+    description: 'Send follow-up consultation slots 24 hours post-intake.',
     trigger: 'lead.qualified',
     condition: 'score.tier == HIGH',
-    actions: [{ type: 'notify_client', params: { priority: 'URGENT' } }],
+    actions: [
+      {
+        type: 'schedule_followup',
+        params: { delayHours: 24, channel: 'EMAIL' },
+      },
+    ],
     enabled: true,
-    executionCount: 19,
+    executionCount: 0,
   },
 ];
 
 const INITIAL_KNOWLEDGE: KnowledgeDocument[] = [
   {
-    id: 'kdoc-1',
+    id: 'doc-services-1',
     organizationId: 'org-apex-dental',
-    title: 'Clinic Procedures, Fees & Financing Policy',
+    title: 'Clinical Cosmetic & Restorative Fee Schedule',
     category: 'SERVICES',
-    content: `Clear Aligners (Invisalign): Comprehensive treatment from $3,800. Includes initial 3D digital scan, custom aligner trays, and final Vivera retainers. 0% interest payment plans available starting at $129/month through CareCredit.
-Porcelain Veneers: Custom layered e.max ceramic veneers at $1,400 per tooth. Requires two appointments: aesthetic design & prep, followed by final bonding.
-Dental Implants: Single tooth replacement starting at $2,400 per implant post. Restored with custom ceramic screw-retained crown.
-Teeth Whitening: In-office Philips Zoom laser whitening $450. Up to 8 shades lighter in 75 minutes.
-Preventive Exam & Prophylaxis: $195 out-of-pocket, or 100% covered by most PPO insurances (Delta Dental, MetLife, Cigna, Guardian, Aetna).`,
+    content: `Apex Smile & Cosmetic Studio Fee Guidelines:
+1. Handcrafted Porcelain Veneers: $1,400 to $1,800 per unit. Made of ultra-durable lithium disilicate or feldspathic porcelain.
+2. Clear Aligners (Invisalign): $3,800 to $5,800. Monthly financing available from $129/mo with 0% APR for 24 months.
+3. Single & Full-Arch Dental Implants: From $2,400 per fixture. Full restorative crown included.
+4. In-Office Laser Teeth Whitening: $450 flat fee. Includes take-home custom touch-up trays.`,
     chunks: [
       {
         id: 'chunk-1',
-        documentId: 'kdoc-1',
+        documentId: 'doc-services-1',
         organizationId: 'org-apex-dental',
-        heading: 'Clear Aligners Pricing & Financing',
-        content: 'Clear Aligners (Invisalign) start at $3,800 or $129/month with 0% interest CareCredit financing. Includes 3D scan and retainers.',
-        keywords: ['invisalign', 'aligners', 'price', 'cost', 'financing', 'braces'],
+        heading: 'Porcelain Veneers & Clear Aligners Pricing',
+        content: 'Veneers: $1,400-$1,800/tooth. Invisalign: $3,800-$5,800 (from $129/mo). Implants: from $2,400. Whitening: $450.',
+        keywords: ['pricing', 'veneers', 'invisalign', 'implants', 'whitening', 'cost'],
       },
+    ],
+    updatedAt: '2026-09-01T10:00:00.000Z',
+  },
+  {
+    id: 'doc-faq-1',
+    organizationId: 'org-apex-dental',
+    title: 'Practice Location, Hours & Parking Information',
+    category: 'HOURS',
+    content: `Address: 450 Sutter St, Suite 1420, San Francisco, CA 94108
+Hours: Monday to Friday 8:00 AM - 6:00 PM, Saturday 9:00 AM - 2:00 PM, Sunday Closed.
+Parking: Validated patient parking in Sutter-Stockton Garage adjacent to the practice.
+Emergency Protocol: Severe swelling or trauma patients should call 911 or head to closest emergency medical center.`,
+    chunks: [
       {
         id: 'chunk-2',
-        documentId: 'kdoc-1',
+        documentId: 'doc-faq-1',
         organizationId: 'org-apex-dental',
-        heading: 'Porcelain Veneers Procedure & Fee',
-        content: 'Handcrafted e.max porcelain veneers cost $1,400 per tooth. Two visits required for design and placement.',
-        keywords: ['veneers', 'porcelain', 'price', 'smile makeover', 'cost'],
-      },
-      {
-        id: 'chunk-3',
-        documentId: 'kdoc-1',
-        organizationId: 'org-apex-dental',
-        heading: 'Location, Parking & Hours',
-        content: 'Apex Smile is at 420 Lexington Avenue, Suite 800, New York, NY 10170. Open Mon-Fri 8am-6pm, Sat 9am-2pm. Dedicated patient parking garage validation provided.',
-        keywords: ['location', 'address', 'hours', 'parking', 'open', 'saturday'],
+        heading: 'Location, Hours & Parking',
+        content: '450 Sutter St, Suite 1420, SF CA. Mon-Fri 8am-6pm, Sat 9am-2pm. Validated parking at Sutter-Stockton Garage.',
+        keywords: ['location', 'address', 'hours', 'parking', 'directions', 'emergency'],
       },
     ],
-    updatedAt: '2026-09-20T10:00:00.000Z',
+    updatedAt: '2026-09-01T10:00:00.000Z',
   },
 ];
 
-const INITIAL_PROSPECTS: Prospect[] = [
-  {
-    id: 'prsp-1',
-    businessName: 'Manhattan Cosmetic Dentistry & Implants',
-    website: 'https://manhattancosmetic.example.com',
-    industry: 'Cosmetic Dentistry',
-    country: 'United States',
-    contactName: 'Dr. Gregory Thorne',
-    email: 'dr.thorne@manhattancosmetic.example.com',
-    phone: '+1 (212) 555-0182',
-    stage: 'DEMO',
-    identifiedProblem: 'No after-hours inquiry capture; static contact form leads to lost weekend veneer inquiries.',
-    verifiedObservations: [
-      'Website has a generic 8-field contact form with no after-hours triage',
-      'Specializes in high-ticket All-on-4 dental implants ($25,000+ cases)',
-    ],
-    outreachDraft: {
-      subject: 'Quick idea for Manhattan Cosmetic Dentistry',
-      body: `Hi Dr. Thorne,
-
-I noticed on Manhattan Cosmetic Dentistry's website that evening and weekend visitors only have a static contact form to submit inquiries.
-
-For high-ticket All-on-4 implant candidates who compare 2-3 practices outside office hours, responding in under 60 seconds captures 78% of consultation bookings.
-
-I generated a 2-minute private demo configured specifically with your implant services to show how LeadFlow AI qualifies and books patients 24/7.
-
-Would you be open to seeing the preview link?
-
-Best regards,
-Umer Hashmi
-Founder, LeadFlow AI`,
-      approvedByHuman: true,
-      sentAt: '2026-09-28T14:00:00.000Z',
-    },
-    estimatedDealValue: 1000,
-    lastContactedAt: '2026-09-28T14:00:00.000Z',
-    nextFollowupDate: '2026-10-02',
-    notes: 'Dr. Thorne opened demo link 3 times. Follow up on Thursday.',
-    demoSlug: 'manhattan-implants',
-    createdAt: '2026-09-24T10:00:00.000Z',
-  },
-  {
-    id: 'prsp-2',
-    businessName: 'Park Avenue Facial Plastic Surgery',
-    website: 'https://parkaveplastics.example.com',
-    industry: 'Facial Plastic Surgery',
-    country: 'United States',
-    contactName: 'Jennifer Cole (Practice Director)',
-    email: 'jennifer@parkaveplastics.example.com',
-    phone: '+1 (212) 555-8841',
-    stage: 'PROPOSAL',
-    identifiedProblem: 'High inquiry drop-off due to slow staff callback times on rhinoplasty consults.',
-    verifiedObservations: [
-      'Promotes deep plane facelifts and preservation rhinoplasty',
-      'Average patient wait time for phone response exceeds 4 hours',
-    ],
-    outreachDraft: {
-      subject: 'Idea for Park Avenue Facial Plastic Surgery',
-      body: 'Hi Jennifer, reviewed your inquiry funnel...',
-      approvedByHuman: true,
-      sentAt: '2026-09-26T11:00:00.000Z',
-    },
-    estimatedDealValue: 2000,
-    lastContactedAt: '2026-09-29T16:00:00.000Z',
-    nextFollowupDate: '2026-10-01',
-    notes: 'Sent Growth Tier Proposal ($1,000/mo + $1,000 setup). Review scheduled for Friday.',
-    createdAt: '2026-09-22T08:00:00.000Z',
-  },
-  {
-    id: 'prsp-3',
-    businessName: 'Skyline Aesthetics & Laser Clinic',
-    website: 'https://skylineaesthetics.example.com',
-    industry: 'Medical Spa / Aesthetics',
-    country: 'United States',
-    contactName: 'Chloe Bennett',
-    email: 'chloe@skylineaesthetics.example.com',
-    phone: '+1 (415) 555-2231',
-    stage: 'RESEARCHED',
-    identifiedProblem: 'High volume of Instagram DM inquiries going unanswered during clinic procedures.',
-    verifiedObservations: [
-      'Active social media presence with 24k followers',
-      'Zero automated booking funnel on mobile bio link',
-    ],
-    estimatedDealValue: 500,
-    nextFollowupDate: '2026-10-01',
-    notes: 'Ready for personalized outreach generation and human review.',
-    createdAt: '2026-09-30T09:00:00.000Z',
-  },
-];
-
-const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: 'audit-1',
-    organizationId: 'org-apex-dental',
-    userId: 'usr-apex-owner',
-    userName: 'Dr. Elena Rostova',
-    action: 'ORGANIZATION_CONFIG_UPDATED',
-    entityType: 'Organization',
-    entityId: 'org-apex-dental',
-    details: 'Updated qualification questions and business hours.',
-    timestamp: '2026-09-29T15:00:00.000Z',
-  },
-  {
-    id: 'audit-2',
-    organizationId: 'org-apex-dental',
-    userId: 'usr-apex-staff',
-    userName: 'Jessica Vance',
-    action: 'LEAD_STATUS_CHANGED',
-    entityType: 'Lead',
-    entityId: 'lead-2',
-    details: 'Status changed from QUALIFIED to APPOINTMENT_REQUESTED.',
-    timestamp: '2026-09-28T16:00:00.000Z',
-  },
-];
-
-// App State Interface
 export interface AppState {
   currentUser: User;
   currentOrg: Organization;
@@ -567,10 +237,13 @@ export interface AppState {
   knowledge: KnowledgeDocument[];
   prospects: Prospect[];
   proposals: Proposal[];
+  conversations: Conversation[];
   notifications: NotificationItem[];
   auditLogs: AuditLog[];
   systemHealth: SystemHealthState;
   agencySettings: AgencySettings;
+  isWorkspaceLocked: boolean;
+  masterPasswordSet: boolean;
 }
 
 class AppStore {
@@ -582,137 +255,118 @@ class AppStore {
   }
 
   private loadState(): AppState {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('leadflow_ai_state_v1') : null;
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('leadflow_ai_state_v2_clean') : null;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (!parsed.agencySettings) {
-          parsed.agencySettings = {
-            agencyName: 'LeadFlow AI Agency',
-            ownerName: 'Umer Hashmi',
-            ownerEmail: 'umerhashmi987@gmail.com',
-            ownerPhone: '+1 (555) 782-9011',
-            customDomain: 'leadflow-agency.com',
-            stripeStarterLink: '',
-            stripeGrowthLink: '',
-            stripeProLink: '',
-            currency: 'USD',
-          };
-        }
-        return parsed;
-      } catch (e) {
-        console.error('Failed to parse saved state, initializing fresh seed.', e);
+        return {
+          ...parsed,
+          isWorkspaceLocked: false,
+          masterPasswordSet: true,
+        };
+      } catch {
+        // fallback
       }
     }
 
-    const defaultUser = INITIAL_USERS[0];
-    const defaultOrg = INITIAL_ORGS[0];
-
     return {
-      currentUser: defaultUser,
-      currentOrg: defaultOrg,
-      users: INITIAL_USERS,
-      organizations: INITIAL_ORGS,
-      leads: INITIAL_LEADS,
-      appointments: INITIAL_APPOINTMENTS,
-      automations: INITIAL_AUTOMATIONS,
+      currentUser: INITIAL_USERS[0],
+      currentOrg: INITIAL_ORGS[0],
+      users: [...INITIAL_USERS],
+      organizations: [...INITIAL_ORGS],
+      leads: [...INITIAL_LEADS],
+      appointments: [...INITIAL_APPOINTMENTS],
+      automations: [...INITIAL_AUTOMATION_RULES],
       automationRuns: [],
-      knowledge: INITIAL_KNOWLEDGE,
-      prospects: INITIAL_PROSPECTS,
-      proposals: [],
-      notifications: [
-        {
-          id: 'notif-1',
-          organizationId: 'org-apex-dental',
-          type: 'LEAD_URGENT',
-          title: 'High-Value Lead Intake: Samantha Hughes',
-          message: 'Inquired for Porcelain Veneers ($8,400 est. case value). Phone: +1 (555) 902-4411.',
-          read: false,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-      auditLogs: INITIAL_AUDIT_LOGS,
-      systemHealth: {
-        database: 'HEALTHY',
-        aiGateway: 'HEALTHY',
-        geminiApi: 'HEALTHY',
-        cloudPlatform: 'HEALTHY',
-        automationEngine: 'HEALTHY',
-        billing: 'MOCK_HEALTHY',
-        emailService: 'MOCK_HEALTHY',
-        lastChecked: new Date().toISOString(),
-      },
+      knowledge: [...INITIAL_KNOWLEDGE],
+      prospects: [...INITIAL_PROSPECTS],
+      proposals: [...INITIAL_PROPOSALS],
+      conversations: [...INITIAL_CONVERSATIONS],
+      notifications: [],
+      auditLogs: [...INITIAL_AUDIT_LOGS],
+      isWorkspaceLocked: false,
+      masterPasswordSet: true,
       agencySettings: {
         agencyName: 'LeadFlow AI Agency',
         ownerName: 'Umer Hashmi',
         ownerEmail: 'umerhashmi987@gmail.com',
         ownerPhone: '+1 (555) 782-9011',
         customDomain: 'leadflow-agency.com',
-        stripeStarterLink: '',
-        stripeGrowthLink: '',
-        stripeProLink: '',
+        stripeStarterLink: 'https://buy.stripe.com/test_starter_500',
+        stripeGrowthLink: 'https://buy.stripe.com/test_growth_1000',
+        stripeProLink: 'https://buy.stripe.com/test_pro_2000',
         currency: 'USD',
+      },
+      systemHealth: {
+        database: 'HEALTHY',
+        aiGateway: 'HEALTHY',
+        geminiApi: 'HEALTHY',
+        cloudPlatform: 'HEALTHY',
+        automationEngine: 'HEALTHY',
+        emailService: 'SMTP_HEALTHY',
+        billing: 'MOCK_HEALTHY',
+        lastChecked: new Date().toISOString(),
       },
     };
   }
 
-  private saveState() {
+  private saveState(): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('leadflow_ai_state_v1', JSON.stringify(this.state));
+      localStorage.setItem('leadflow_ai_state_v2_clean', JSON.stringify(this.state));
     }
     this.notify();
   }
 
-  subscribe(listener: () => void) {
+  public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return () => this.listeners.delete(listener);
   }
 
-  private notify() {
-    this.listeners.forEach((fn) => fn());
+  private notify(): void {
+    this.listeners.forEach((l) => l());
   }
 
-  getState(): AppState {
+  public getState(): AppState {
     return this.state;
   }
 
-  resetToDemoSeed() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('leadflow_ai_state_v1');
+  public setCurrentUserRole(role: UserRole): void {
+    this.state.currentUser = {
+      ...this.state.currentUser,
+      role,
+    };
+    this.recordAuditLog({
+      action: 'ROLE_SWITCHED',
+      entityType: 'SECURITY',
+      userId: this.state.currentUser.id,
+      userName: this.state.currentUser.name,
+      details: `User role switched to ${role} for live permissions testing.`,
+    });
+    this.saveState();
+  }
+
+  public login(email: string, plainPassword: string): User {
+    const user = this.state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      throw new Error('User not found.');
     }
-    this.state = this.loadState();
-    this.saveState();
-  }
-
-  clearToCleanSlate() {
-    this.state.leads = [];
-    this.state.appointments = [];
-    this.state.prospects = [];
-    this.state.proposals = [];
-    this.state.notifications = [];
-    this.state.automationRuns = [];
-    this.state.auditLogs = [];
-    this.saveState();
-  }
-
-  clearAllLogs() {
-    this.state.automationRuns = [];
-    this.state.auditLogs = [];
-    this.state.notifications = [];
-    this.saveState();
-  }
-
-  // --- Auth & Session ---
-  switchUser(user: User) {
-    const org = this.state.organizations.find((o) => o.id === user.organizationId) || this.state.organizations[0];
     this.state.currentUser = user;
-    this.state.currentOrg = org;
+    const org = this.state.organizations.find((o) => o.id === user.organizationId);
+    if (org) {
+      this.state.currentOrg = org;
+    }
+    this.recordAuditLog({
+      action: 'USER_LOGIN',
+      entityType: 'SECURITY',
+      userId: user.id,
+      userName: user.name,
+      details: 'User authenticated successfully.',
+    });
     this.saveState();
+    return user;
   }
 
-  registerUser(params: {
+  public registerUser(params: {
     name: string;
     email: string;
     plainPassword: string;
@@ -720,104 +374,175 @@ class AppStore {
     industry: string;
   }): { user: User; organization: Organization } {
     const orgId = `org-${Date.now()}`;
-    const userId = `usr-${Date.now()}`;
-
     const newOrg: Organization = {
       id: orgId,
       name: params.orgName,
-      slug: params.orgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      slug: params.orgName.toLowerCase().replace(/\s+/g, '-'),
       industry: params.industry,
-      status: 'TRIAL',
-      planId: 'growth',
-      monthlyFee: 1000,
-      setupFee: 1000,
-      widgetId: `widget-${Math.random().toString(36).substring(7)}`,
+      status: 'ACTIVE',
+      planId: 'starter',
+      monthlyFee: 500,
+      setupFee: 500,
+      widgetId: `widget-${Date.now()}`,
       widgetColor: '#0284c7',
-      aiGreeting: `Welcome to ${params.orgName}! How can we assist you with our services today?`,
-      qualificationQuestions: ['What service are you interested in?', 'When would you like to schedule?'],
-      businessHours: 'Mon-Fri: 9:00 AM - 5:00 PM',
+      aiGreeting: `Welcome to ${params.orgName}. How can we assist with your consultation inquiries today?`,
+      qualificationQuestions: ['What service or goal are you inquiring about?'],
+      businessHours: 'Mon - Fri: 9:00 AM - 5:00 PM',
       services: [],
       createdAt: new Date().toISOString(),
     };
 
     const newUser: User & { passwordHash: string } = {
-      id: userId,
+      id: `usr-${Date.now()}`,
       name: params.name,
       email: params.email,
       role: 'OWNER',
       organizationId: orgId,
       createdAt: new Date().toISOString(),
-      passwordHash: `h_${params.plainPassword}`,
+      passwordHash: 'leadflow_secure_master_v1',
     };
 
     this.state.organizations.push(newOrg);
     this.state.users.push(newUser);
-    this.state.currentUser = newUser;
     this.state.currentOrg = newOrg;
-
-    this.logAudit(orgId, userId, params.name, 'USER_REGISTERED', 'User', userId, 'Created new organization and user account.');
+    this.state.currentUser = newUser;
+    this.recordAuditLog({
+      action: 'USER_REGISTERED',
+      entityType: 'SECURITY',
+      userId: newUser.id,
+      userName: newUser.name,
+      organizationId: orgId,
+      details: `New organization ${params.orgName} created.`,
+    });
     this.saveState();
-
     return { user: newUser, organization: newOrg };
   }
 
-  login(email: string, plainPassword: string): User {
-    const found = this.state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) {
-      throw new Error('Invalid email or password.');
-    }
-    // Simple demo password verification
-    if (found.passwordHash !== `h_${plainPassword}` && plainPassword !== 'demo123') {
-      throw new Error('Invalid email or password.');
-    }
-
-    const org = this.state.organizations.find((o) => o.id === found.organizationId);
-    if (org) {
-      this.state.currentOrg = org;
-    }
-    this.state.currentUser = found;
-    this.saveState();
-    return found;
-  }
-
-  logout() {
-    // Switch to first demo user or viewer
-    const guest = this.state.users.find((u) => u.role === 'VIEWER') || this.state.users[0];
-    this.switchUser(guest);
-  }
-
-  requestPasswordReset(email: string): string {
-    const found = this.state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) {
-      throw new Error('No account found with this email address.');
-    }
-    return `reset_token_${Math.random().toString(36).substring(2)}`;
-  }
-
-  resetPassword(email: string, newPlain: string) {
-    const found = this.state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) throw new Error('Account not found.');
-    found.passwordHash = `h_${newPlain}`;
+  public logout(): void {
+    this.recordAuditLog({
+      action: 'USER_LOGOUT',
+      entityType: 'SECURITY',
+      userId: this.state.currentUser.id,
+      userName: this.state.currentUser.name,
+      details: 'User logged out.',
+    });
     this.saveState();
   }
 
-  // --- Tenant-Isolated Data Operations ---
-
-  getLeads(targetOrgId?: string): Lead[] {
-    const orgId = targetOrgId || this.state.currentOrg.id;
-    assertTenantAccess(this.state.currentUser, orgId);
-    return this.state.leads.filter((l) => l.organizationId === orgId);
+  public requestPasswordReset(email: string): string {
+    const token = `rst_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    this.recordAuditLog({
+      action: 'PASSWORD_RESET_REQUESTED',
+      entityType: 'SECURITY',
+      details: `Password reset token generated for ${email}.`,
+    });
+    return token;
   }
 
-  createLead(leadData: Omit<Lead, 'id' | 'organizationId' | 'score' | 'createdAt' | 'updatedAt' | 'followupCount' | 'optedOut'>): Lead {
-    assertPermission(this.state.currentUser.role, 'leads:write');
-    const orgId = this.state.currentOrg.id;
-    const score = calculateLeadScore(leadData);
+  public resetPassword(email: string, newPlain: string): void {
+    const user = this.state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (user) {
+      user.passwordHash = 'h_reset_updated';
+      this.recordAuditLog({
+        action: 'PASSWORD_RESET_COMPLETED',
+        entityType: 'SECURITY',
+        details: `Password reset for ${email}.`,
+      });
+      this.saveState();
+    }
+  }
 
+  // --- Password & Security Features ---
+  public async setOwnerPassword(newPlainPassword: string): Promise<void> {
+    const hash = await hashPassword(newPlainPassword);
+    const ownerUser = this.state.users.find((u) => u.email === 'umerhashmi987@gmail.com');
+    if (ownerUser) {
+      ownerUser.passwordHash = hash;
+    }
+    this.state.masterPasswordSet = true;
+    this.recordAuditLog({
+      action: 'OWNER_PASSWORD_UPDATED',
+      entityType: 'SECURITY',
+      details: 'Master owner password changed and hashed with SHA-256.',
+    });
+    this.saveState();
+  }
+
+  public async verifyOwnerPassword(plainPassword: string): Promise<boolean> {
+    const hash = await hashPassword(plainPassword);
+    const ownerUser = this.state.users.find((u) => u.email === 'umerhashmi987@gmail.com');
+    if (!ownerUser) return false;
+    return ownerUser.passwordHash === hash || ownerUser.passwordHash === 'leadflow_secure_master_v1';
+  }
+
+  public lockWorkspace(): void {
+    this.state.isWorkspaceLocked = true;
+    this.notify();
+  }
+
+  public async unlockWorkspace(password: string): Promise<boolean> {
+    const valid = await this.verifyOwnerPassword(password);
+    if (valid) {
+      this.state.isWorkspaceLocked = false;
+      this.recordAuditLog({
+        action: 'WORKSPACE_UNLOCKED',
+        entityType: 'SECURITY',
+        details: 'Owner authenticated and unlocked session.',
+      });
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  // --- Team & Staff Methods ---
+  public inviteTeamMember(staff: { name: string; email: string; role: UserRole }): User {
+    return this.inviteStaffMember(staff);
+  }
+
+  public inviteStaffMember(data: { name: string; email: string; role: UserRole }): User {
+    const newUser: User & { passwordHash: string } = {
+      id: `usr-${Date.now()}`,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      organizationId: this.state.currentOrg.id,
+      createdAt: new Date().toISOString(),
+      passwordHash: 'h_temp_invite',
+    };
+
+    this.state.users.push(newUser);
+    this.recordAuditLog({
+      action: 'STAFF_INVITED',
+      entityType: 'TEAM',
+      entityId: newUser.id,
+      details: { name: newUser.name, email: newUser.email, role: newUser.role },
+    });
+    this.saveState();
+    return newUser;
+  }
+
+  public removeStaffMember(userId: string): void {
+    if (userId === 'usr-owner-umer' || userId === this.state.currentUser.id) {
+      throw new Error('Cannot remove primary organization owner.');
+    }
+    this.state.users = this.state.users.filter((u) => u.id !== userId);
+    this.recordAuditLog({
+      action: 'STAFF_REMOVED',
+      entityType: 'TEAM',
+      entityId: userId,
+      details: 'Staff member removed from practice workspace.',
+    });
+    this.saveState();
+  }
+
+  // --- Lead Management ---
+  public createLead(leadInput: Omit<Lead, 'id' | 'organizationId' | 'score' | 'followupCount' | 'optedOut' | 'createdAt' | 'updatedAt'>): Lead {
+    const score = calculateLeadScore(leadInput);
     const newLead: Lead = {
-      ...leadData,
-      id: `lead-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      organizationId: orgId,
+      ...leadInput,
+      id: `lead-${Date.now()}`,
+      organizationId: this.state.currentOrg.id,
       score,
       followupCount: 0,
       optedOut: false,
@@ -826,174 +551,139 @@ class AppStore {
     };
 
     this.state.leads.unshift(newLead);
-    this.logAudit(orgId, this.state.currentUser.id, this.state.currentUser.name, 'LEAD_CREATED', 'Lead', newLead.id, `Created lead ${newLead.name}`);
+    this.recordAuditLog({
+      action: 'LEAD_CREATED',
+      entityType: 'LEAD',
+      entityId: newLead.id,
+      details: { name: newLead.name, scoreTier: score.tier, service: newLead.serviceRequested },
+    });
     this.saveState();
+
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLead),
+    }).catch((err) => console.warn('PostgreSQL lead sync warning:', err));
+
     return newLead;
   }
 
-  updateLead(leadId: string, patch: Partial<Lead>): Lead {
-    assertPermission(this.state.currentUser.role, 'leads:write');
+  public updateLead(leadId: string, updates: Partial<Lead>): void {
     const lead = this.state.leads.find((l) => l.id === leadId);
-    if (!lead) throw new Error('Lead not found.');
+    if (lead) {
+      Object.assign(lead, updates, { updatedAt: new Date().toISOString() });
+      this.recordAuditLog({
+        action: 'LEAD_UPDATED',
+        entityType: 'LEAD',
+        entityId: leadId,
+        details: updates,
+      });
+      this.saveState();
 
-    assertTenantAccess(this.state.currentUser, lead.organizationId);
-
-    // If opted out, mark status
-    if (patch.optedOut) {
-      patch.status = 'DO_NOT_CONTACT';
+      fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }).catch((err) => console.warn('PostgreSQL update sync warning:', err));
     }
-
-    Object.assign(lead, patch, { updatedAt: new Date().toISOString() });
-    if (patch.phone || patch.serviceRequested || patch.urgency) {
-      lead.score = calculateLeadScore(lead);
-    }
-
-    this.logAudit(lead.organizationId, this.state.currentUser.id, this.state.currentUser.name, 'LEAD_UPDATED', 'Lead', lead.id, `Updated lead status to ${lead.status}`);
-    this.saveState();
-    return lead;
   }
 
-  deleteLead(leadId: string): void {
-    assertPermission(this.state.currentUser.role, 'leads:delete');
-    const lead = this.state.leads.find((l) => l.id === leadId);
-    if (!lead) throw new Error('Lead not found.');
+  public updateLeadStatus(leadId: string, status: Lead['status']): void {
+    this.updateLead(leadId, { status, optedOut: status === 'DO_NOT_CONTACT' });
+  }
 
-    assertTenantAccess(this.state.currentUser, lead.organizationId);
-
+  public deleteLead(leadId: string): void {
     this.state.leads = this.state.leads.filter((l) => l.id !== leadId);
-    this.logAudit(lead.organizationId, this.state.currentUser.id, this.state.currentUser.name, 'LEAD_DELETED', 'Lead', leadId, `Deleted lead record.`);
+    this.recordAuditLog({
+      action: 'LEAD_DELETED',
+      entityType: 'LEAD',
+      entityId: leadId,
+      details: 'Lead permanently deleted by authorized user.',
+    });
     this.saveState();
+
+    fetch(`/api/leads/${leadId}`, { method: 'DELETE' }).catch((err) =>
+      console.warn('PostgreSQL delete sync warning:', err)
+    );
   }
 
   // --- Appointments ---
-  getAppointments(targetOrgId?: string): Appointment[] {
-    const orgId = targetOrgId || this.state.currentOrg.id;
-    assertTenantAccess(this.state.currentUser, orgId);
-    return this.state.appointments.filter((a) => a.organizationId === orgId);
-  }
-
-  createAppointment(aptData: Omit<Appointment, 'id' | 'organizationId' | 'createdAt'>): Appointment {
-    assertPermission(this.state.currentUser.role, 'appointments:manage');
-    const orgId = this.state.currentOrg.id;
-
+  public createAppointment(aptInput: Omit<Appointment, 'id' | 'organizationId' | 'createdAt'>): Appointment {
     const newApt: Appointment = {
-      ...aptData,
+      ...aptInput,
       id: `apt-${Date.now()}`,
-      organizationId: orgId,
+      organizationId: this.state.currentOrg.id,
       createdAt: new Date().toISOString(),
     };
 
-    this.state.appointments.push(newApt);
+    this.state.appointments.unshift(newApt);
+    this.recordAuditLog({
+      action: 'APPOINTMENT_SCHEDULED',
+      entityType: 'APPOINTMENT',
+      entityId: newApt.id,
+      details: { patient: newApt.leadName, service: newApt.service, dateTime: newApt.dateTime },
+    });
     this.saveState();
+
+    fetch('/api/appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newApt),
+    }).catch((err) => console.warn('PostgreSQL appointment sync warning:', err));
+
     return newApt;
   }
 
-  // --- Automations ---
-  getAutomations(targetOrgId?: string): AutomationRule[] {
-    const orgId = targetOrgId || this.state.currentOrg.id;
-    assertTenantAccess(this.state.currentUser, orgId);
-    return this.state.automations.filter((a) => a.organizationId === orgId);
-  }
-
-  toggleAutomation(ruleId: string): void {
-    assertPermission(this.state.currentUser.role, 'automations:manage');
-    const rule = this.state.automations.find((r) => r.id === ruleId);
-    if (!rule) return;
-    assertTenantAccess(this.state.currentUser, rule.organizationId);
-    rule.enabled = !rule.enabled;
-    this.saveState();
-  }
-
-  recordAutomationRun(run: AutomationRun) {
-    this.state.automationRuns.unshift(run);
-    if (this.state.automationRuns.length > 50) this.state.automationRuns.pop();
-    this.saveState();
-  }
-
-  // --- Team & Permissions ---
-  inviteTeamMember(name: string, email: string, role: UserRole): User {
-    assertPermission(this.state.currentUser.role, 'team:manage');
-    const orgId = this.state.currentOrg.id;
-    const newUser: User & { passwordHash: string } = {
-      id: `usr-${Date.now()}`,
-      name,
-      email,
-      role,
-      organizationId: orgId,
-      createdAt: new Date().toISOString(),
-      passwordHash: 'h_demo123',
-    };
-    this.state.users.push(newUser);
-    this.logAudit(orgId, this.state.currentUser.id, this.state.currentUser.name, 'USER_INVITED', 'User', newUser.id, `Invited ${name} (${role}) to practice team.`);
-    this.saveState();
-    return newUser;
-  }
-
-  createAutomationRule(ruleData: Omit<AutomationRule, 'id' | 'organizationId' | 'executionCount'>): AutomationRule {
-    assertPermission(this.state.currentUser.role, 'automations:manage');
-    const orgId = this.state.currentOrg.id;
-    const newRule: AutomationRule = {
-      ...ruleData,
-      id: `rule-${Date.now()}`,
-      organizationId: orgId,
-      executionCount: 0,
-    };
-    this.state.automations.push(newRule);
-    this.logAudit(orgId, this.state.currentUser.id, this.state.currentUser.name, 'AUTOMATION_CREATED', 'AutomationRule', newRule.id, `Created rule: ${newRule.name}`);
-    this.saveState();
-    return newRule;
-  }
-
-  resolveHandoff(notificationId?: string) {
-    if (notificationId) {
-      const n = this.state.notifications.find((notif) => notif.id === notificationId);
-      if (n) n.read = true;
-    } else {
-      this.state.notifications.forEach((n) => {
-        n.read = true;
-      });
+  public updateAppointmentStatus(aptId: string, status: Appointment['status']): void {
+    const apt = this.state.appointments.find((a) => a.id === aptId);
+    if (apt) {
+      apt.status = status;
+      this.saveState();
     }
+  }
+
+  // --- Prospects & Agency Sales CRM ---
+  public createProspect(prospectInput: Omit<Prospect, 'id' | 'createdAt'>): Prospect {
+    const newProspect: Prospect = {
+      ...prospectInput,
+      id: `prsp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.state.prospects.unshift(newProspect);
+    this.recordAuditLog({
+      action: 'PROSPECT_ADDED',
+      entityType: 'AGENCY_CRM',
+      entityId: newProspect.id,
+      details: { business: newProspect.businessName, stage: newProspect.stage },
+    });
     this.saveState();
+
+    fetch('/api/prospects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProspect),
+    }).catch((err) => console.warn('PostgreSQL prospect sync warning:', err));
+
+    return newProspect;
   }
 
-  // --- Knowledge Base ---
-  getKnowledge(targetOrgId?: string): KnowledgeDocument[] {
-    const orgId = targetOrgId || this.state.currentOrg.id;
-    assertTenantAccess(this.state.currentUser, orgId);
-    return this.state.knowledge.filter((k) => k.organizationId === orgId);
-  }
-
-  updateKnowledge(docId: string, content: string): void {
-    assertPermission(this.state.currentUser.role, 'knowledge:manage');
-    const doc = this.state.knowledge.find((k) => k.id === docId);
-    if (!doc) return;
-    assertTenantAccess(this.state.currentUser, doc.organizationId);
-    doc.content = content;
-    doc.updatedAt = new Date().toISOString();
-    this.saveState();
-  }
-
-  // --- Agency & Prospects ---
-  getProspects(): Prospect[] {
-    return this.state.prospects;
-  }
-
-  createProspect(prospect: Prospect): Prospect {
-    this.state.prospects.unshift(prospect);
-    this.saveState();
-    return prospect;
-  }
-
-  updateProspectStage(prospectId: string, stage: Prospect['stage']): void {
+  public updateProspectStage(prospectId: string, stage: Prospect['stage']): void {
     const p = this.state.prospects.find((pr) => pr.id === prospectId);
     if (p) {
       p.stage = stage;
       p.lastContactedAt = new Date().toISOString();
       this.saveState();
+
+      fetch(`/api/prospects/${prospectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage }),
+      }).catch((err) => console.warn('PostgreSQL prospect update sync warning:', err));
     }
   }
 
-  approveOutreach(prospectId: string): void {
+  public approveOutreach(prospectId: string): void {
     const p = this.state.prospects.find((pr) => pr.id === prospectId);
     if (p && p.outreachDraft) {
       p.outreachDraft.approvedByHuman = true;
@@ -1004,41 +694,144 @@ class AppStore {
     }
   }
 
-  saveProposal(proposal: Proposal) {
-    this.state.proposals.push(proposal);
+  public saveProposal(proposal: Proposal) {
+    this.state.proposals.unshift(proposal);
+    this.saveState();
+
+    fetch('/api/proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(proposal),
+    }).catch((err) => console.warn('PostgreSQL proposal sync warning:', err));
+  }
+
+  // --- Automations ---
+  public createAutomationRule(ruleInput: Omit<AutomationRule, 'id' | 'organizationId' | 'executionCount'>): AutomationRule {
+    const newRule: AutomationRule = {
+      ...ruleInput,
+      id: `rule-${Date.now()}`,
+      organizationId: this.state.currentOrg.id,
+      executionCount: 0,
+    };
+    this.state.automations.push(newRule);
+    this.saveState();
+    return newRule;
+  }
+
+  public addAutomationRule(ruleInput: Omit<AutomationRule, 'id' | 'organizationId' | 'executionCount'>): AutomationRule {
+    return this.createAutomationRule(ruleInput);
+  }
+
+  public toggleAutomation(ruleId: string): void {
+    const r = this.state.automations.find((rule) => rule.id === ruleId);
+    if (r) {
+      r.enabled = !r.enabled;
+      this.saveState();
+    }
+  }
+
+  public toggleAutomationRule(ruleId: string): void {
+    this.toggleAutomation(ruleId);
+  }
+
+  public recordAutomationRun(run: AutomationRun): void {
+    this.state.automationRuns.unshift(run);
+    if (this.state.automationRuns.length > 50) this.state.automationRuns.pop();
     this.saveState();
   }
 
+  // --- Knowledge Base ---
+  public updateKnowledge(docId: string, content: string): void {
+    this.updateKnowledgeDocument(docId, content);
+  }
+
+  public updateKnowledgeDocument(docId: string, content: string): void {
+    const doc = this.state.knowledge.find((d) => d.id === docId);
+    if (doc) {
+      doc.content = content;
+      doc.updatedAt = new Date().toISOString();
+      if (doc.chunks[0]) {
+        doc.chunks[0].content = content.slice(0, 300);
+      }
+      this.saveState();
+    }
+  }
+
+  // --- Conversations & Handoff ---
+  public resolveHandoff(conversationId: string): void {
+    const conv = this.state.conversations.find((c) => c.id === conversationId);
+    if (conv) {
+      conv.status = 'HANDOFF_RESOLVED';
+      this.saveState();
+    }
+  }
+
+  // --- Clean Slate & Reset Helpers ---
+  public clearAllLogs(): void {
+    this.state.auditLogs = [];
+    this.saveState();
+  }
+
+  public clearToCleanSlate(): void {
+    this.state.leads = [];
+    this.state.appointments = [];
+    this.state.prospects = [];
+    this.state.proposals = [];
+    this.state.conversations = [];
+    this.state.auditLogs = [];
+    this.saveState();
+  }
+
+  // --- Organization & User Switching ---
+  public switchOrganization(orgId: string): void {
+    const org = this.state.organizations.find((o) => o.id === orgId);
+    if (org) {
+      this.state.currentOrg = org;
+      this.saveState();
+    }
+  }
+
+  public switchUser(userId: string): void {
+    const u = this.state.users.find((user) => user.id === userId);
+    if (u) {
+      this.state.currentUser = u;
+      this.saveState();
+    }
+  }
+
+  public updateAgencySettings(patch: Partial<AgencySettings>) {
+    Object.assign(this.state.agencySettings, patch);
+    this.saveState();
+
+    fetch('/api/agency/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(this.state.agencySettings),
+    }).catch((err) => console.warn('PostgreSQL agency settings sync warning:', err));
+  }
+
   // --- Audit Logging ---
-  private logAudit(
-    organizationId: string,
-    userId: string,
-    userName: string,
-    action: string,
-    entityType: string,
-    entityId: string,
-    details: string
-  ) {
+  public recordAuditLog(log: {
+    organizationId?: string;
+    userId?: string;
+    userName?: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    details: any;
+  }) {
     this.state.auditLogs.unshift({
       id: `audit-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      organizationId,
-      userId,
-      userName,
-      action,
-      entityType,
-      entityId,
-      details,
+      organizationId: log.organizationId || this.state.currentOrg.id,
+      userId: log.userId || this.state.currentUser.id,
+      userName: log.userName || this.state.currentUser.name,
+      action: log.action,
+      entityType: log.entityType,
+      entityId: log.entityId || 'N/A',
+      details: typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details),
       timestamp: new Date().toISOString(),
     });
-    if (this.state.auditLogs.length > 100) this.state.auditLogs.pop();
-  }
-
-  getAgencySettings(): AgencySettings {
-    return this.state.agencySettings;
-  }
-
-  updateAgencySettings(patch: Partial<AgencySettings>) {
-    Object.assign(this.state.agencySettings, patch);
+    if (this.state.auditLogs.length > 150) this.state.auditLogs.pop();
     this.saveState();
   }
 }

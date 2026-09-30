@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Bot, MessageSquare } from 'lucide-react';
+import { Bot, MessageSquare, Mic, Phone } from 'lucide-react';
 import { AuthModal } from './components/auth/AuthModal.tsx';
 import { ClientDashboardView } from './components/dashboard/ClientDashboardView.tsx';
 import { Navbar, ActiveView } from './components/layout/Navbar.tsx';
@@ -16,13 +16,19 @@ import { OwnerCommandCenter } from './components/admin/OwnerCommandCenter.tsx';
 import { PlaybookView } from './components/playbook/PlaybookView.tsx';
 import { SystemTestView } from './components/tests/SystemTestView.tsx';
 import { AIReceptionistWidget } from './components/widget/AIReceptionistWidget.tsx';
+import { WorkspaceLockScreen } from './components/auth/WorkspaceLockScreen.tsx';
+import { LiveVoiceAssistantModal } from './components/voice/LiveVoiceAssistantModal.tsx';
 import { appStore } from './lib/store/app-store.ts';
+
+import { OwnerMasterControlModal } from './components/auth/OwnerMasterControlModal.tsx';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>('MARKETING');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [showFloatingWidget, setShowFloatingWidget] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [, setTick] = useState(0);
 
   // Re-render when store updates
@@ -35,11 +41,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-sky-200">
+      {/* Workspace Terminal Lock Screen */}
+      <WorkspaceLockScreen />
+
       {/* Top Navbar */}
       <Navbar
         activeView={activeView}
         setActiveView={setActiveView}
         onOpenAuth={() => setShowAuthModal(true)}
+        onOpenOwnerModal={() => setShowOwnerModal(true)}
       />
 
       {/* Main View Router */}
@@ -89,22 +99,50 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => setShowFloatingWidget(true)}
-              className="px-4 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full shadow-xl flex items-center gap-2 text-xs font-semibold transition-all hover:scale-105"
-            >
-              <Bot className="w-4 h-4" />
-              <span>Ask AI Receptionist</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowVoiceModal(true)}
+                className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-xl flex items-center gap-2 text-xs font-semibold transition-all hover:scale-105"
+                title="Speak to 24/7 Voice AI Receptionist"
+              >
+                <Mic className="w-4 h-4 animate-pulse" />
+                <span>Voice AI Agent</span>
+              </button>
+
+              <button
+                onClick={() => setActiveView('CLIENT_DASHBOARD')}
+                className="px-3.5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-xl flex items-center gap-2 text-xs font-semibold transition-all hover:scale-105"
+                title="Open Practice Phone & Softphone Console"
+              >
+                <Phone className="w-4 h-4" />
+                <span>Softphone</span>
+              </button>
+
+              <button
+                onClick={() => setShowFloatingWidget(true)}
+                className="px-4 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full shadow-xl flex items-center gap-2 text-xs font-semibold transition-all hover:scale-105"
+              >
+                <Bot className="w-4 h-4" />
+                <span>Ask AI Receptionist</span>
+              </button>
+            </div>
           )}
         </div>
       )}
 
       {/* Modals */}
+      <LiveVoiceAssistantModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+      />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <OnboardingWizardModal
         isOpen={showOnboardingModal}
         onClose={() => setShowOnboardingModal(false)}
+      />
+      <OwnerMasterControlModal
+        isOpen={showOwnerModal}
+        onClose={() => setShowOwnerModal(false)}
       />
     </div>
   );

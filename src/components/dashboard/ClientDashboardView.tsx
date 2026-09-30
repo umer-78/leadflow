@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
   Bot,
   Calendar,
@@ -18,11 +19,13 @@ import {
   Filter,
   MessageSquare,
   Phone,
+  PhoneIncoming,
   Plus,
   RefreshCw,
   Search,
   Settings,
   Shield,
+  ShieldCheck,
   Trash2,
   TrendingUp,
   UserCheck,
@@ -30,12 +33,19 @@ import {
   Zap,
 } from 'lucide-react';
 import { assertPermission, hasPermission } from '../../lib/auth/auth-service.ts';
+import { PermissionGuard } from '../common/PermissionGuard.tsx';
 import { calculateLeadScore } from '../../lib/crm/scoring.ts';
 import { appStore } from '../../lib/store/app-store.ts';
 import { Appointment, Lead, LeadStatus, UserRole } from '../../lib/types/index.ts';
+import { ClinicalCopilot } from './ClinicalCopilot.tsx';
+import { PrivacyComplianceView } from './PrivacyComplianceView.tsx';
+import { LiveAuditLogsView } from './LiveAuditLogsView.tsx';
+import { PhoneReceptionistView } from '../voice/PhoneReceptionistView.tsx';
 
 type DashboardTab =
   | 'overview'
+  | 'copilot'
+  | 'phone'
   | 'leads'
   | 'appointments'
   | 'conversations'
@@ -43,7 +53,9 @@ type DashboardTab =
   | 'automations'
   | 'team'
   | 'widget'
-  | 'billing';
+  | 'billing'
+  | 'privacy'
+  | 'logs';
 
 export function ClientDashboardView() {
   const state = appStore.getState();
@@ -193,7 +205,7 @@ export function ClientDashboardView() {
     e.preventDefault();
     setActionError(null);
     try {
-      appStore.inviteTeamMember(staffName, staffEmail, staffRole);
+      appStore.inviteTeamMember({ name: staffName, email: staffEmail, role: staffRole });
       setShowInviteStaffModal(false);
       setStaffName('');
       setStaffEmail('');
@@ -232,7 +244,7 @@ export function ClientDashboardView() {
   };
 
   const handleResolveHandoff = () => {
-    appStore.resolveHandoff();
+    appStore.resolveHandoff('conv-sim-1');
   };
 
   return (
@@ -265,6 +277,40 @@ export function ClientDashboardView() {
             >
               <TrendingUp className="w-4 h-4" />
               <span>Overview</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('copilot')}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                activeTab === 'copilot'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Bot className="w-4 h-4 text-indigo-400" />
+                <span>Dr. AI Clinical Copilot</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 bg-indigo-950 text-indigo-300 border border-indigo-800 rounded">
+                Voice/Chat
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('phone')}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                activeTab === 'phone'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <PhoneIncoming className="w-4 h-4 text-emerald-400" />
+                <span>24/7 Phone Receptionist</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded">
+                Voice/Line
+              </span>
             </button>
 
             <button
@@ -380,6 +426,40 @@ export function ClientDashboardView() {
               </div>
               <span className="text-[10px] font-mono text-sky-400 uppercase">
                 {currentOrg.planId}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('privacy')}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                activeTab === 'privacy'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Privacy & HIPAA</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded">
+                Export/Purge
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                activeTab === 'logs'
+                  ? 'bg-slate-700 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <span>Live Audit & Email Logs</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded font-mono">
+                {state.auditLogs.length}
               </span>
             </button>
           </nav>
@@ -547,6 +627,9 @@ export function ClientDashboardView() {
             </div>
           </div>
         )}
+
+        {/* CLINICAL COPILOT TAB */}
+        {activeTab === 'copilot' && <ClinicalCopilot />}
 
         {/* LEADS & TRIAGE TAB */}
         {activeTab === 'leads' && (
@@ -1070,6 +1153,15 @@ export function ClientDashboardView() {
             </div>
           </div>
         )}
+
+        {/* PRIVACY & COMPLIANCE TAB */}
+        {activeTab === 'privacy' && <PrivacyComplianceView />}
+
+        {/* 24/7 PHONE RECEPTIONIST TAB */}
+        {activeTab === 'phone' && <PhoneReceptionistView />}
+
+        {/* LIVE AUDIT LOGS TAB */}
+        {activeTab === 'logs' && <LiveAuditLogsView />}
       </main>
 
       {/* Score Breakdown Modal */}
