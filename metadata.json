@@ -1,0 +1,6 @@
+{
+  "name": "LeadFlow AI",
+  "description": "AI lead capture, qualification, follow-up, and appointment automation platform for high-value service businesses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
