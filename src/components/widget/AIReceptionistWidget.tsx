@@ -10,8 +10,11 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Compass,
+  ExternalLink,
   MapPin,
   MessageSquare,
+  Navigation,
   Phone,
   Send,
   ShieldCheck,
@@ -22,6 +25,7 @@ import { aiRouter } from '../../lib/ai/router.ts';
 import { automationEngine } from '../../lib/automation/engine.ts';
 import { appStore } from '../../lib/store/app-store.ts';
 import { Message } from '../../lib/types/index.ts';
+import { VoiceAudioInput } from '../voice/VoiceAudioInput.tsx';
 
 interface AIReceptionistWidgetProps {
   isEmbedded?: boolean;
@@ -66,6 +70,16 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
     setIsLoading(true);
 
     try {
+      // Check if user is asking about Google Maps location / directions
+      const lower = userText.toLowerCase();
+      const isLocationQuery =
+        lower.includes('where') ||
+        lower.includes('location') ||
+        lower.includes('address') ||
+        lower.includes('parking') ||
+        lower.includes('direction') ||
+        lower.includes('how to get');
+
       // Gather relevant knowledge base chunks
       const chunks = currentKnowledge.flatMap((k) => k.chunks.map((c) => `${c.heading}: ${c.content}`));
 
@@ -83,6 +97,7 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
         metadata: {
           requiresHandoff: aiResponse.requiresHandoff,
           extractedLeadInfo: aiResponse.extractedLead,
+          showMapsCard: isLocationQuery,
         },
       };
 
@@ -138,93 +153,109 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
     'What are your location, hours, and parking?',
     'Do you offer financing for Invisalign?',
     'Doctor, my tooth is throbbing. Can you diagnose what infection I have?',
-    'I want to book an appointment next Tuesday morning for veneers. My number is 555-234-5678.',
   ];
 
   return (
-    <div className={`flex flex-col h-full ${isEmbedded ? '' : 'min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-slate-950'}`}>
-      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col md:flex-row gap-6">
-        {/* Left Side: Clinic Context & Sample Prompts */}
-        <div className="w-full md:w-80 shrink-0 space-y-4">
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
-            <span className="text-[10px] font-semibold text-sky-400 uppercase tracking-wider block">
-              Active Practice Context
-            </span>
-            <h2 className="text-sm font-bold text-white mt-0.5">{currentOrg.name}</h2>
-            <div className="mt-2 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                <span className="truncate">{currentOrg.address || '420 Lexington Ave, Suite 800'}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                <span>Mon-Fri 8am-6pm, Sat 9am-2pm</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                <span>{currentOrg.phone}</span>
-              </div>
-            </div>
+    <div className={`w-full flex flex-col ${isEmbedded ? '' : 'max-w-4xl mx-auto p-4'}`}>
+      {!isEmbedded && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 text-xs text-sky-400 font-semibold uppercase tracking-wider mb-1">
+            <Sparkles className="w-4 h-4" />
+            <span>24/7 Clinical Practice Receptionist</span>
           </div>
-
-          {/* Test Questions Quick Buttons */}
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-            <span className="text-[11px] font-semibold text-slate-300 block">
-              Test Common Patient Scenarios:
-            </span>
-            <div className="space-y-1.5">
-              {samplePrompts.map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSendMessage(q)}
-                  disabled={isLoading}
-                  className="w-full text-left p-2 rounded-lg bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800/80 text-[11px] text-slate-300 hover:text-white transition-colors"
-                >
-                  "{q}"
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {lastExtractedLead && (
-            <div className="p-4 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs space-y-1">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Lead Captured & Qualified!</span>
-              </div>
-              <div className="text-[11px] text-slate-300">
-                Service: <strong>{lastExtractedLead.service || 'Consultation'}</strong>
-              </div>
-              <div className="text-[11px] text-slate-300">
-                Phone: <strong>{lastExtractedLead.phone}</strong>
-              </div>
-              <div className="text-[10px] text-emerald-400/80 pt-1">
-                ✓ Recorded into Client Dashboard & Automation triggered.
-              </div>
-            </div>
-          )}
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            Patient Intake & Consultation Scheduling Simulator
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Test procedure inquiries, after-hours intake, clinical guardrails, voice dictation, and Google Maps directions.
+          </p>
         </div>
+      )}
 
-        {/* Right Side: Interactive AI Chat Box */}
-        <div className="flex-1 flex flex-col bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-2xl min-h-[500px]">
-          {/* Chat Header */}
-          <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center text-white shadow-sm">
-                <Bot className="w-5 h-5" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left Side: Test Prompts & Clinical Context */}
+        {!isEmbedded && (
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
+                <span>Test Prompts</span>
+              </h3>
+              <p className="text-[11px] text-slate-400 mb-3">
+                Click any prompt to simulate patient questions:
+              </p>
+              <div className="space-y-1.5">
+                {samplePrompts.map((p, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSendMessage(p)}
+                    disabled={isLoading}
+                    className="w-full text-left p-2 rounded-lg bg-slate-950 hover:bg-slate-800/80 border border-slate-800/80 text-xs text-slate-300 hover:text-white transition-colors"
+                  >
+                    "{p}"
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Practice Contact & Google Maps Quick Info */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs space-y-2.5">
+              <div className="flex items-center gap-2 text-white font-semibold pb-2 border-b border-slate-800">
+                <MapPin className="w-4 h-4 text-rose-400" />
+                <span>Practice Location</span>
+              </div>
+              <div className="text-slate-300">
+                <span className="font-semibold text-white block">{currentOrg.name}</span>
+                <span className="text-[11px] text-slate-400 block mt-0.5">450 Sutter St, Suite 1420, San Francisco, CA 94108</span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                <Clock className="w-3 h-3 inline mr-1 text-slate-500" />
+                <span>{currentOrg.hours || 'Mon - Fri: 8:00 AM - 6:00 PM · Sat: 9:00 AM - 2:00 PM'}</span>
+              </div>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(currentOrg.name + ' San Francisco')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium pt-1"
+              >
+                <span>Open in Google Maps</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Right Side: Interactive AI Receptionist Widget */}
+        <div
+          className={`${
+            isEmbedded ? 'col-span-12' : 'lg:col-span-8'
+          } bg-slate-900 border border-slate-800 rounded-xl flex flex-col h-[520px] shadow-2xl overflow-hidden`}
+        >
+          {/* Header */}
+          <div className="p-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                  AI
+                </div>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">24/7 AI Patient Coordinator</h3>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Online · Guarded by verified clinic knowledge</span>
+                <div className="font-semibold text-xs text-white flex items-center gap-1.5">
+                  <span>{currentOrg.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800 font-mono">
+                    24/7 AI Receptionist
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <span>Voice & Text Enabled · Guarded by clinical knowledge</span>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-sky-400" />
-              <span>Safe Clinical Guardrails</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Safe Intake</span>
             </div>
           </div>
 
@@ -247,7 +278,7 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
                   {m.sender === 'VISITOR' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <div
                     className={`p-3 rounded-xl text-xs leading-relaxed ${
                       m.sender === 'VISITOR'
@@ -257,6 +288,37 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
                   >
                     {m.content}
                   </div>
+
+                  {/* Interactive Google Maps Direction Card if location queried */}
+                  {m.metadata?.showMapsCard && (
+                    <div className="p-3 bg-slate-900/90 border border-sky-800/60 rounded-xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-sky-300 font-semibold">
+                          <Navigation className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Google Maps Practice Navigation</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-mono">Validated</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        📍 450 Sutter St, Suite 1420, San Francisco, CA 94108
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        🅿️ Validated parking is available in the Sutter-Stockton Garage adjacent to the building.
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                          '450 Sutter St, San Francisco, CA 94108'
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold rounded-lg transition-colors shadow-sm"
+                      >
+                        <Compass className="w-3 h-3" />
+                        <span>Get Instant Directions</span>
+                      </a>
+                    </div>
+                  )}
+
                   <div
                     className={`text-[10px] text-slate-500 mt-1 ${
                       m.sender === 'VISITOR' ? 'text-right' : ''
@@ -275,14 +337,14 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
                 </div>
                 <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl rounded-tl-xs text-xs text-slate-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                  <span>Checking clinical guidelines and procedure fees...</span>
+                  <span>Processing inquiry and verifying clinical guidelines...</span>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Box */}
+          {/* Input Box with Voice Audio Dictation */}
           <div className="p-3 bg-slate-950 border-t border-slate-800">
             <form
               onSubmit={(e) => {
@@ -295,13 +357,24 @@ export function AIReceptionistWidget({ isEmbedded = false }: AIReceptionistWidge
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about treatments, consultation availability, or pricing..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                placeholder="Type or click the microphone to speak..."
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
               />
+
+              {/* Live Microphone Voice Input */}
+              <VoiceAudioInput
+                onTranscript={(voiceText) => {
+                  setInput(voiceText);
+                  handleSendMessage(voiceText);
+                }}
+                isProcessing={isLoading}
+                size="sm"
+              />
+
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
               >
                 <span>Send</span>
                 <Send className="w-3.5 h-3.5" />

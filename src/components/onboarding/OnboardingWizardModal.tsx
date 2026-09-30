@@ -101,10 +101,10 @@ export function OnboardingWizardModal({ isOpen, onClose }: OnboardingWizardModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-6 text-slate-100 shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col text-slate-100 shadow-2xl relative overflow-hidden">
         {/* Header */}
-        <div className="pb-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-5 sm:p-6 pb-3 border-b border-slate-800 shrink-0 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-semibold text-sky-400 uppercase tracking-wider">
               Step {step} of {totalSteps} · 11-Step Practice Protocol
@@ -123,13 +123,13 @@ export function OnboardingWizardModal({ isOpen, onClose }: OnboardingWizardModal
               {step === 11 && '11. Production Activation'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-md transition-colors">
             ✕
           </button>
         </div>
 
         {/* Step Progress Bar */}
-        <div className="w-full bg-slate-950 h-1 mt-2 rounded-full overflow-hidden">
+        <div className="w-full bg-slate-950 h-1 rounded-none overflow-hidden shrink-0">
           <div
             className="bg-sky-500 h-full transition-all duration-300"
             style={{ width: `${(step / totalSteps) * 100}%` }}
@@ -137,7 +137,7 @@ export function OnboardingWizardModal({ isOpen, onClose }: OnboardingWizardModal
         </div>
 
         {/* Form Body */}
-        <div className="flex-1 py-6 overflow-y-auto space-y-4 text-xs">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs">
           {step === 1 && (
             <div className="space-y-3">
               <div>
@@ -373,7 +373,7 @@ export function OnboardingWizardModal({ isOpen, onClose }: OnboardingWizardModal
         </div>
 
         {/* Footer Navigation Buttons */}
-        <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+        <div className="p-4 sm:p-5 bg-slate-950 border-t border-slate-800 shrink-0 flex justify-between items-center">
           <button
             onClick={() => setStep((s) => Math.max(1, s - 1))}
             disabled={step === 1}

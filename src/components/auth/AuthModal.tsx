@@ -4,16 +4,17 @@
  */
 
 import React, { useState } from 'react';
+import { Building2, Lock, ShieldCheck, Stethoscope, UserPlus } from 'lucide-react';
 import { appStore } from '../../lib/store/app-store.ts';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'LOGIN' | 'REGISTER' | 'RESET';
+  initialMode?: 'CLIENT_LOGIN' | 'OWNER_LOGIN' | 'REGISTER' | 'RESET';
 }
 
-export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalProps) {
-  const [mode, setMode] = useState<'LOGIN' | 'REGISTER' | 'RESET'>(initialMode);
+export function AuthModal({ isOpen, onClose, initialMode = 'CLIENT_LOGIN' }: AuthModalProps) {
+  const [mode, setMode] = useState<'CLIENT_LOGIN' | 'OWNER_LOGIN' | 'REGISTER' | 'RESET'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -30,8 +31,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
     setSuccess(null);
 
     try {
-      if (mode === 'LOGIN') {
+      if (mode === 'CLIENT_LOGIN') {
         appStore.login(email, password);
+        onClose();
+      } else if (mode === 'OWNER_LOGIN') {
+        const targetEmail = email.trim() || 'umerhashmi987@gmail.com';
+        appStore.login(targetEmail, password);
         onClose();
       } else if (mode === 'REGISTER') {
         if (!name || !email || !password || !clinicName) {
@@ -45,31 +50,34 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
           orgName: clinicName,
           industry,
         });
-        setSuccess('Account created successfully! You are logged in as practice Owner.');
+        setSuccess('Practice workspace registered successfully! Logged in as Practice Owner.');
         setTimeout(() => onClose(), 800);
       } else if (mode === 'RESET') {
         const token = appStore.requestPasswordReset(email);
-        setSuccess(`Reset link simulated! In production an email is sent. Token: ${token}`);
+        setSuccess(`Password reset instructions generated for ${email}. Token: ${token}`);
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || 'Authentication failed. Please verify credentials.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full max-h-[85vh] flex flex-col text-slate-100 shadow-2xl relative overflow-hidden">
+        {/* Header with Mode Tabs */}
+        <div className="p-5 sm:p-6 pb-4 border-b border-slate-800 shrink-0 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-white">
-              {mode === 'LOGIN' && 'Sign In to LeadFlow AI'}
-              {mode === 'REGISTER' && 'Create Practice Account'}
-              {mode === 'RESET' && 'Reset Your Password'}
+            <h2 className="text-base font-bold tracking-tight text-white">
+              {mode === 'CLIENT_LOGIN' && 'Clinic Doctor & Staff Portal'}
+              {mode === 'OWNER_LOGIN' && 'Agency Founder Gateway'}
+              {mode === 'REGISTER' && 'Register New Practice'}
+              {mode === 'RESET' && 'Reset Access Password'}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              {mode === 'LOGIN' && 'Access your clinic dashboard and lead pipeline'}
-              {mode === 'REGISTER' && 'Setup 24/7 autonomous lead intake for your practice'}
-              {mode === 'RESET' && 'Enter your verified email address'}
+              {mode === 'CLIENT_LOGIN' && 'Access your private practice patient queue and intake'}
+              {mode === 'OWNER_LOGIN' && 'Agency back-office, Stripe links, and acquisition engine'}
+              {mode === 'REGISTER' && 'Set up 24/7 patient intake for your clinic'}
+              {mode === 'RESET' && 'Enter your practice email to receive a recovery token'}
             </p>
           </div>
           <button
@@ -79,6 +87,50 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
             ✕
           </button>
         </div>
+
+        {/* Scrollable Body */}
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+
+        {/* Quick Portal Switcher Tabs */}
+        {(mode === 'CLIENT_LOGIN' || mode === 'OWNER_LOGIN') && (
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-lg border border-slate-800 mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('CLIENT_LOGIN');
+                setEmail('');
+                setPassword('');
+                setError(null);
+              }}
+              className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                mode === 'CLIENT_LOGIN'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Stethoscope className="w-3.5 h-3.5" />
+              <span>Practice Doctor</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode('OWNER_LOGIN');
+                setEmail('umerhashmi987@gmail.com');
+                setPassword('');
+                setError(null);
+              }}
+              className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                mode === 'OWNER_LOGIN'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Agency Founder</span>
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-950/40 border border-red-800/60 rounded-lg text-xs text-red-300">
@@ -96,24 +148,24 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
           {mode === 'REGISTER' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Doctor / Manager Full Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Dr. Alexander Wright"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Clinic / Practice Name</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Practice / Clinic Name</label>
                 <input
                   type="text"
                   value={clinicName}
                   onChange={(e) => setClinicName(e.target.value)}
                   placeholder="Wright Cosmetic & Implant Clinic"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
                   required
                 />
               </div>
@@ -122,13 +174,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
                 <select
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
                 >
                   <option value="Dental / Cosmetic Dentistry">Dental & Cosmetic Dentistry</option>
                   <option value="Facial Plastic Surgery">Facial Plastic Surgery</option>
                   <option value="Medical Spa & Aesthetics">Medical Spa & Aesthetics</option>
                   <option value="Orthodontics">Orthodontics & Aligners</option>
-                  <option value="High-Ticket Specialty Clinic">Other Specialty Clinic</option>
+                  <option value="Specialty Healthcare Clinic">Other Specialty Clinic</option>
                 </select>
               </div>
             </>
@@ -140,8 +192,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@practice.com"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+              placeholder={mode === 'OWNER_LOGIN' ? 'umerhashmi987@gmail.com' : 'doctor@practice.com'}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
               required
             />
           </div>
@@ -150,7 +202,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-medium text-slate-300">Password</label>
-                {mode === 'LOGIN' && (
+                {mode === 'CLIENT_LOGIN' && (
                   <button
                     type="button"
                     onClick={() => setMode('RESET')}
@@ -165,31 +217,41 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
                 required
               />
-              {mode === 'LOGIN' && (
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Demo hint: any pre-seeded user password is <code className="text-slate-400">demo123</code>
-                </p>
-              )}
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-medium text-sm rounded-lg transition-colors shadow-sm mt-2"
+            className={`w-full py-2.5 px-4 font-semibold text-xs rounded-lg transition-colors shadow-sm mt-2 text-white ${
+              mode === 'OWNER_LOGIN'
+                ? 'bg-indigo-600 hover:bg-indigo-500'
+                : 'bg-sky-600 hover:bg-sky-500'
+            }`}
           >
-            {mode === 'LOGIN' && 'Sign In to Dashboard'}
-            {mode === 'REGISTER' && 'Create Practice Workspace'}
+            {mode === 'CLIENT_LOGIN' && 'Sign In to Practice Portal'}
+            {mode === 'OWNER_LOGIN' && 'Unlock Agency Command'}
+            {mode === 'REGISTER' && 'Create Practice Account'}
             {mode === 'RESET' && 'Generate Reset Token'}
           </button>
         </form>
 
         <div className="mt-4 pt-3 border-t border-slate-800 text-center text-xs text-slate-400">
-          {mode === 'LOGIN' ? (
+          {mode === 'REGISTER' ? (
             <p>
-              Don't have a practice account?{' '}
+              Already have an account?{' '}
+              <button
+                onClick={() => setMode('CLIENT_LOGIN')}
+                className="text-sky-400 hover:text-sky-300 font-medium ml-1"
+              >
+                Sign in here
+              </button>
+            </p>
+          ) : (
+            <p>
+              New clinic practice?{' '}
               <button
                 onClick={() => setMode('REGISTER')}
                 className="text-sky-400 hover:text-sky-300 font-medium ml-1"
@@ -197,17 +259,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'LOGIN' }: AuthModalP
                 Register your clinic
               </button>
             </p>
-          ) : (
-            <p>
-              Already registered?{' '}
-              <button
-                onClick={() => setMode('LOGIN')}
-                className="text-sky-400 hover:text-sky-300 font-medium ml-1"
-              >
-                Back to Sign In
-              </button>
-            </p>
           )}
+        </div>
         </div>
       </div>
     </div>

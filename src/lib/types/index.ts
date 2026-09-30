@@ -22,6 +22,7 @@ export interface Organization {
   website?: string;
   phone?: string;
   address?: string;
+  hours?: string;
   status: 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'SUSPENDED';
   planId: 'starter' | 'growth' | 'pro';
   monthlyFee: number;
@@ -109,6 +110,7 @@ export interface Message {
     confidenceScore?: number;
     requiresHandoff?: boolean;
     sourcesUsed?: string[];
+    showMapsCard?: boolean;
   };
 }
 

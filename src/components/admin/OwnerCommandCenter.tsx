@@ -41,12 +41,13 @@ import { billingProvider } from '../../lib/billing/provider.ts';
 import { generateOutreachDraft, generateProposalDraft, generateProspectResearch, ResearchReport } from '../../lib/crm/prospects.ts';
 import { appStore } from '../../lib/store/app-store.ts';
 import { Proposal, Prospect, ProspectStage } from '../../lib/types/index.ts';
+import { GoogleLiveExplorerView } from '../research/GoogleLiveExplorerView.tsx';
 
 export function OwnerCommandCenter() {
   const state = appStore.getState();
   const mrrMetrics = billingProvider.calculateMRR(state.organizations);
 
-  const [activeTab, setActiveTab] = useState<'today' | 'mrr' | 'crm' | 'campaigns' | 'settings' | 'health' | 'audit'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'mrr' | 'crm' | 'google_research' | 'campaigns' | 'settings' | 'health' | 'audit'>('today');
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [researchReport, setResearchReport] = useState<ResearchReport | null>(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
@@ -263,6 +264,23 @@ export function OwnerCommandCenter() {
               </div>
               <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded">
                 {prospects.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('google_research')}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                activeTab === 'google_research'
+                  ? 'bg-sky-600 text-white'
+                  : 'text-sky-400 hover:text-sky-300 hover:bg-sky-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-sky-400" />
+                <span>Google & Maps Intel</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 bg-sky-950 text-sky-300 border border-sky-800 rounded">
+                Live AI
               </span>
             </button>
 
@@ -988,6 +1006,9 @@ export function OwnerCommandCenter() {
           </div>
         )}
 
+        {/* GOOGLE RESEARCH & MAPS INTEL TAB */}
+        {activeTab === 'google_research' && <GoogleLiveExplorerView />}
+
         {/* SYSTEM HEALTH ($0 Free-First) (Rule 37 & 49) */}
         {activeTab === 'health' && (
           <div className="space-y-6">
@@ -1314,14 +1335,18 @@ export function OwnerCommandCenter() {
 
       {/* Add Prospect Modal */}
       {showAddProspectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full max-h-[85vh] flex flex-col text-slate-100 shadow-2xl relative overflow-hidden">
+            {/* Header */}
+            <div className="p-5 sm:p-6 pb-3 border-b border-slate-800 shrink-0 flex justify-between items-center">
               <h3 className="text-sm font-bold text-white">Add Clinic Prospect to CRM</h3>
               <button onClick={() => setShowAddProspectModal(false)} className="text-slate-400 hover:text-white p-1">
                 ✕
               </button>
             </div>
+
+            {/* Scrollable Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1">
 
             <form onSubmit={handleAddProspect} className="py-4 space-y-3">
               <div>
@@ -1399,6 +1424,7 @@ export function OwnerCommandCenter() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
