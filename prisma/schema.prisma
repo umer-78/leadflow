@@ -1,0 +1,572 @@
+// LeadFlow AI - Multi-Tenant Prisma Schema
+// Database Engine: PostgreSQL
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STAFF
+  VIEWER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  SUSPENDED
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  CONTACTED
+  APPOINTMENT_REQUESTED
+  APPOINTMENT_BOOKED
+  WON
+  LOST
+  DO_NOT_CONTACT
+}
+
+enum LeadScoreTier {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum UrgencyLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ConversationStatus {
+  ACTIVE
+  HANDOFF_REQUESTED
+  HANDOFF_RESOLVED
+  CLOSED
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  FRUSTRATED
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProspectStage {
+  PROSPECT
+  RESEARCHED
+  CONTACTED
+  REPLIED
+  DEMO
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ProposalStatus {
+  DRAFT
+  REVIEWED
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  SUSPENDED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// -------------------------------------------------------------
+// CORE TENANT & AUTH MODELS
+// -------------------------------------------------------------
+
+model Organization {
+  id                     String             @id @default(uuid())
+  name                   String
+  slug                   String             @unique
+  industry               String
+  website                String?
+  phone                  String?
+  address                String?
+  status                 OrganizationStatus @default(TRIAL)
+  planId                 String             @default("growth")
+  monthlyFee             Int                @default(1000)
+  setupFee               Int                @default(1000)
+  widgetId               String             @unique @default(uuid())
+  widgetColor            String             @default("#0284c7")
+  aiGreeting             String             @default("Hello! How can we assist you today?")
+  qualificationQuestions String[]           @default([])
+  businessHours          String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  // Tenant-Owned Entity Relations
+  users               User[]
+  memberships         Membership[]
+  clients             Client[]
+  leads               Lead[]
+  leadEvents          LeadEvent[]
+  conversations       Conversation[]
+  knowledgeDocuments  KnowledgeDocument[]
+  knowledgeChunks     KnowledgeChunk[]
+  automationRules     AutomationRule[]
+  automationRuns      AutomationRun[]
+  appointments        Appointment[]
+  prospects           Prospect[]
+  notifications       Notification[]
+  subscriptions       Subscription[]
+  payments            Payment[]
+  usageRecords        UsageRecord[]
+  supportTickets      SupportTicket[]
+  campaigns           Campaign[]
+  auditLogs           AuditLog[]
+  integrations        Integration[]
+
+  @@index([slug])
+  @@index([widgetId])
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String       @unique
+  name           String
+  passwordHash   String
+  role           UserRole     @default(STAFF)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           UserRole     @default(STAFF)
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Client {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String
+  phone          String?
+  status         String       @default("ACTIVE")
+  billingContact String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+// -------------------------------------------------------------
+// LEAD INTAKE, CONVERSATION & APPOINTMENT MODELS
+// -------------------------------------------------------------
+
+model Lead {
+  id                  String        @id @default(uuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                String
+  email               String
+  phone               String?
+  serviceRequested    String
+  preferredDate       String?
+  preferredTime       String?
+  urgency             UrgencyLevel  @default(MEDIUM)
+  notes               String?
+  status              LeadStatus    @default(NEW)
+  scoreTier           LeadScoreTier @default(LOW)
+  scorePoints         Int           @default(0)
+  scoreReasons        String[]      @default([])
+  source              String        @default("Website AI Widget")
+  assignedStaffId     String?
+  estimatedValue      Int           @default(0)
+  lastContactedAt     DateTime?
+  followupScheduledAt DateTime?
+  followupCount       Int           @default(0)
+  optedOut            Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  events       LeadEvent[]
+  appointments Appointment[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, scoreTier])
+}
+
+model LeadEvent {
+  id             String       @id @default(uuid())
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventType      String
+  description    String
+  actor          String       @default("AI")
+  timestamp      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([leadId])
+}
+
+model Conversation {
+  id             String             @id @default(uuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String?
+  visitorName    String?
+  status         ConversationStatus @default(ACTIVE)
+  sentiment      Sentiment          @default(NEUTRAL)
+  startedAt      DateTime           @default(now())
+  lastMessageAt  DateTime           @default(now())
+
+  messages Message[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String // "VISITOR" | "AI" | "STAFF"
+  content        String
+  timestamp      DateTime     @default(now())
+  metadata       Json?
+
+  @@index([conversationId])
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  organizationId    String
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId            String
+  lead              Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadName          String
+  service           String
+  dateTime          DateTime
+  durationMinutes   Int               @default(45)
+  status            AppointmentStatus @default(REQUESTED)
+  notes             String?
+  providerStaffName String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([organizationId])
+  @@index([leadId])
+}
+
+// -------------------------------------------------------------
+// KNOWLEDGE BASE (Strict Tenant Isolation)
+// -------------------------------------------------------------
+
+model KnowledgeDocument {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  category       String // "SERVICES" | "PRICING" | "FAQS" | "POLICIES" | "PROCEDURES" | "HOURS"
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  chunks KnowledgeChunk[]
+
+  @@index([organizationId])
+}
+
+model KnowledgeChunk {
+  id             String            @id @default(uuid())
+  documentId     String
+  document       KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  heading        String
+  content        String
+  keywords       String[]          @default([])
+
+  @@index([organizationId])
+  @@index([documentId])
+}
+
+// -------------------------------------------------------------
+// AUTOMATION ENGINE & NOTIFICATIONS
+// -------------------------------------------------------------
+
+model AutomationRule {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  trigger        String // e.g. "lead.created", "lead.qualified"
+  condition      String       @default("always")
+  actions        Json // Array of { type, params }
+  enabled        Boolean      @default(true)
+  executionCount Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, trigger])
+}
+
+model AutomationRun {
+  id             String       @id @default(uuid())
+  ruleId         String
+  ruleName       String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  targetLeadId   String?
+  targetLeadName String?
+  status         String // "SUCCESS" | "SKIPPED" | "FAILED"
+  actionTaken    String
+  timestamp      DateTime     @default(now())
+  details        String?
+
+  @@index([organizationId])
+  @@index([ruleId])
+}
+
+model Notification {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           String // "LEAD_URGENT" | "HANDOFF" | "APPOINTMENT" | "AUTOMATION_ALERT" | "BILLING"
+  title          String
+  message        String
+  read           Boolean      @default(false)
+  timestamp      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, read])
+}
+
+// -------------------------------------------------------------
+// BILLING, PAYMENTS & USAGE
+// -------------------------------------------------------------
+
+model Subscription {
+  id             String             @id @default(uuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId         String
+  status         SubscriptionStatus @default(ACTIVE)
+  monthlyAmount  Int
+  setupFeePaid   Boolean            @default(true)
+  currentPeriodEnd DateTime
+  providerId     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([organizationId])
+}
+
+model Payment {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  amount         Int
+  currency       String       @default("USD")
+  status         String       @default("SUCCEEDED")
+  invoiceUrl     String?
+  providerRef    String?
+  timestamp      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+model UsageRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  metric         String // "conversations" | "sms_dispatched" | "leads_qualified"
+  quantity       Int          @default(1)
+  recordedAt     DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, metric])
+}
+
+// -------------------------------------------------------------
+// AGENCY SALES CRM (Master Operations)
+// -------------------------------------------------------------
+
+model Prospect {
+  id                    String        @id @default(uuid())
+  organizationId        String
+  organization          Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businessName          String
+  website               String
+  industry              String
+  country               String        @default("United States")
+  contactName           String
+  email                 String
+  phone                 String?
+  stage                 ProspectStage @default(PROSPECT)
+  identifiedProblem     String?
+  verifiedObservations  String[]      @default([])
+  outreachDraft         Json?
+  estimatedDealValue    Int           @default(1000)
+  lastContactedAt       DateTime?
+  nextFollowupDate      DateTime?
+  notes                 String?
+  demoSlug              String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  proposals Proposal[]
+
+  @@index([organizationId])
+  @@index([organizationId, stage])
+}
+
+model Proposal {
+  id               String         @id @default(uuid())
+  prospectId       String
+  prospect         Prospect       @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  businessName     String
+  contactName      String
+  packageTier      String // "STARTER" | "GROWTH" | "PRO"
+  setupFee         Int
+  monthlyFee       Int
+  targetPainPoints String[]       @default([])
+  deliverables     String[]       @default([])
+  status           ProposalStatus @default(DRAFT)
+  validUntil       DateTime
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([prospectId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// CAMPAIGNS, SUPPORT & AUDIT
+// -------------------------------------------------------------
+
+model Campaign {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  type           String // "SMS_FOLLOWUP" | "EMAIL_REACTIVATION"
+  status         String       @default("DRAFT")
+  sentCount      Int          @default(0)
+  deliveredCount Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  recipients CampaignRecipient[]
+
+  @@index([organizationId])
+}
+
+model CampaignRecipient {
+  id          String   @id @default(uuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadId      String
+  recipientTo String
+  status      String   @default("QUEUED")
+  sentAt      DateTime?
+
+  @@index([campaignId])
+}
+
+model SupportTicket {
+  id             String         @id @default(uuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subject        String
+  description    String
+  status         TicketStatus   @default(OPEN)
+  priority       TicketPriority @default(MEDIUM)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action         String
+  entityType     String
+  entityId       String
+  details        String?
+  timestamp      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, timestamp])
+  @@index([userId])
+}
+
+model Integration {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       String // "WEBHOOK" | "TWILIO_MOCK" | "CARECREDIT_MOCK" | "GOOGLE_CALENDAR"
+  config         Json
+  status         String       @default("CONNECTED")
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}

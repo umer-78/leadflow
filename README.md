@@ -1,11 +1,88 @@
-<div align="center">
+# LeadFlow AI
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Autonomous lead capture, qualification, follow-up, and appointment automation for high-value service businesses (starting with Dental & Cosmetic clinics).
 
-  <h1>Built with AI Studio</h2>
+Target: **$20,000/month recurring revenue** ($240,000 ARR).
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+---
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## 1. Core Business Architecture
 
-</div>
+LeadFlow AI is engineered for practices where prospective patient cases are worth $3,000 to $25,000 (Invisalign, Veneers, Implants, Facial Aesthetics). In this market, over 58% of inquiries arrive after-hours or on weekends. Practices that respond in under 60 seconds with accurate clinical procedure answers and friction-free consultation booking win 78% of appointments.
+
+The customer does not buy "AI" — they buy an autonomous patient intake machine:
+- **24/7 Precision AI Receptionist**: Bounded strictly by verified clinic guidelines; never fabricates pricing and refuses medical diagnoses.
+- **Explainable Lead Scoring**: Classifies inquiries into HIGH, MEDIUM, LOW intent with transparent rationale.
+- **Multi-Day Follow-Up Automation**: Executes structured sequences at T+0, T+1, T+3, and T+7. Immediately halts upon reply, booking, or opt-out.
+- **Client Practice Dashboard**: Tenant-isolated lead triage, consultation calendar, and knowledge base editor.
+- **Agency Command Center**: $20k MRR gap tracker, daily operating cadence, prospect CRM, and AI research audit generator.
+
+---
+
+## 2. 100% Cloud-First Architecture (Zero Local AI Overhead)
+
+- **Pure Cloud Execution**: Runs entirely in the cloud on Google Cloud Run and AI Studio environment.
+- **Zero Local AI or Heavy Local Models**: Pure cloud deployment, no local model downloads, no local hardware burdens.
+- **Google Cloud Gemini Gateway**:
+  - Powered by Google's `gemini-3.8-flash` in the cloud via the `@google/genai` TypeScript SDK.
+  - Server-side proxy endpoint (`/api/ai/generate`) ensures secure backend execution where API keys are never exposed to the client.
+  - Cloud-hosted Knowledge Base Retrieval Engine for instant, deterministic dental & clinic procedure triage.
+
+---
+
+## 3. Technology Stack & Framework
+
+- **Frontend**: Next.js / React 19, TypeScript, Tailwind CSS (Anti-slop typography, zero static pills).
+- **Backend / ORM**: Prisma ORM with PostgreSQL schema (`prisma/schema.prisma`).
+- **Authentication & Security**: Multi-tenant RBAC (`OWNER`, `ADMIN`, `STAFF`, `VIEWER`), session management, salted password hashing, and cross-tenant isolation enforcement.
+
+---
+
+## 4. Multi-Tenant Role Matrix
+
+| Permission | OWNER | ADMIN | STAFF | VIEWER |
+| :--- | :---: | :---: | :---: | :---: |
+| Full Org & Practice Settings | ✓ | — | — | — |
+| Plan & Billing Management | ✓ | — | — | — |
+| Team & Staff Role Assignment | ✓ | ✓ | — | — |
+| Knowledge Base & FAQ Tuning | ✓ | ✓ | — | — |
+| Automation Rules Management | ✓ | ✓ | — | — |
+| Lead Creation & Editing | ✓ | ✓ | ✓ | — |
+| Consultation Appointment Booking | ✓ | ✓ | ✓ | — |
+| Read-Only Pipeline Audit | ✓ | ✓ | ✓ | ✓ |
+
+**Strict Tenant Isolation**: User belonging to Organization A cannot access or mutate Organization B leads, appointments, or knowledge. Tested and verified in `src/lib/tests/test-runner.ts`.
+
+---
+
+## 5. Quick Start & Local Commands
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start local development server
+npm run dev
+
+# 3. Compile and build
+npm run build
+
+# 4. Typecheck and lint
+npm run lint
+
+# 5. Database operations (with Prisma)
+npx prisma generate
+npx prisma db push
+```
+
+---
+
+## 6. Testing & System Verification
+
+Run the built-in system verification suite via the **"Security & Tests"** tab in the top navigation bar:
+- **Tenant Isolation**: Asserts that Organization A cannot access Organization B.
+- **RBAC Enforcement**: Asserts that VIEWER roles are denied lead mutation/deletion.
+- **AI Safety Guardrail**: Asserts refusal of medical diagnosis requests.
+- **Automation Opt-Out**: Asserts suppression of all outbound messages for `DO_NOT_CONTACT` leads.
+- **Lead Scoring**: Validates transparent point computation for high-value procedures.
+- **E2E Customer Journey**: Simulates visitor prompt to qualified lead extraction and appointment queue.
