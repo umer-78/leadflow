@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeadFlow AI — the front desk that never closes</title>
+<meta name="description" content="An autonomous patient-intake system for dental and aesthetic clinics: a 24/7 AI receptionist bounded by your own guidelines, explainable lead scoring, and follow-up that stops the moment a patient replies or books.">
+<meta name="theme-color" content="#16233b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LeadFlow AI — the front desk that never closes">
+<meta property="og:description" content="A 24/7 AI receptionist for high-value clinics, bounded by your own guidelines. It never invents pricing and refuses to diagnose.">
+<meta property="og:url" content="https://umer-78.github.io/leadflow/">
+<meta property="og:image" content="https://umer-78.github.io/leadflow/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316233b'/%3E%3Cpath d='M8 22c2-7 5-10 8-10s3 3 0 4-3 3 0 3 5-2 8-7' fill='none' stroke='%23c79a5c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,400&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+  /* LeadFlow AI marketing site. A calm, premium clinic palette: deep ink, warm
+     paper, one bronze accent. Not the generic template: no purple/black, no
+     neon, no gradients or glass, a serif display (not Inter/Geist/Grotesk),
+     no emoji, sparkles, orbs, bento grids or fake testimonials. */
+  :root {
+    --paper: #f4f1ea;
+    --paper-2: #ece7db;
+    --card: #faf8f2;
+    --ink: #15202f;
+    --ink-soft: #3a4556;
+    --muted: #6a7180;
+    --line: #dcd5c6;
+    --line-strong: #c7bfab;
+    --accent: #9a6a34;
+    --accent-ink: #f8f3e9;
+    --teal: #1f6b63;
+    --maxw: 1080px;
+    --serif: "Spectral", Georgia, "Times New Roman", serif;
+    --sans: "Spline Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #11161f;
+      --paper-2: #151b26;
+      --card: #19202c;
+      --ink: #e9e7dd;
+      --ink-soft: #c2c0b4;
+      --muted: #8c93a0;
+      --line: #28313f;
+      --line-strong: #39434f;
+      --accent: #d0a062;
+      --accent-ink: #141a12;
+      --teal: #5bbfae;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; }
+  h2 { font-size: clamp(27px, 3.6vw, 38px); margin: 0 0 14px; }
+  p { margin: 0 0 16px; }
+
+  header.top { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); }
+  .bar { display: flex; align-items: center; gap: 20px; height: 64px; }
+  .brand { font-family: var(--serif); font-weight: 600; font-size: 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
+  .brand .mark { width: 25px; height: 25px; border-radius: 6px; background: var(--ink); display: grid; place-items: center; }
+  .brand .mark svg { width: 17px; height: 17px; }
+  .nav { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+  .nav a { color: var(--ink-soft); text-decoration: none; font-size: 15px; }
+  .nav a:hover { color: var(--ink); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1 var(--sans); text-decoration: none; padding: 11px 18px; border-radius: 8px; border: 1px solid var(--ink); cursor: pointer; }
+  .btn.solid { background: var(--ink); color: #f4f1ea; border-color: var(--ink); }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.solid { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); } }
+  .nav .btn { padding: 9px 15px; }
+  @media (max-width: 720px) { .nav a:not(.btn) { display: none; } }
+
+  .hero { padding: clamp(48px, 7vw, 88px) 0 44px; border-bottom: 1px solid var(--line); }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 34px; } }
+  .eyebrow { font: 600 13px/1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 18px; }
+  .hero h1 { font-size: clamp(36px, 5.6vw, 57px); margin: 0 0 20px; }
+  .hero h1 em { font-style: italic; font-weight: 400; }
+  .hero .lead { font-size: 19px; color: var(--ink-soft); max-width: 36ch; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+  .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
+
+  /* a real transcript, showing the receptionist bounded by clinic rules */
+  .chat { background: var(--card); border: 1px solid var(--line-strong); border-radius: 14px; overflow: hidden; }
+  .chat-head { padding: 13px 17px; border-bottom: 1px solid var(--line); font: 600 13px/1 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+  .chat-head .live { color: var(--teal); }
+  .chat-body { padding: 16px 17px; display: grid; gap: 12px; }
+  .msg { max-width: 85%; padding: 10px 13px; border-radius: 12px; font-size: 14.5px; line-height: 1.5; }
+  .msg.them { background: var(--paper-2); border: 1px solid var(--line); justify-self: start; border-bottom-left-radius: 4px; }
+  .msg.bot { background: var(--ink); color: #f1eee6; justify-self: end; border-bottom-right-radius: 4px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .msg.bot { background: color-mix(in srgb, var(--teal) 24%, var(--card)); color: var(--ink); border: 1px solid var(--line-strong); } }
+  .chat-foot { padding: 11px 17px; background: var(--paper-2); border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-soft); }
+
+  section { padding: clamp(50px, 7vw, 82px) 0; border-bottom: 1px solid var(--line); }
+  .kicker { font: 600 13px/1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); margin: 0 0 12px; }
+  .section-lead { max-width: 62ch; color: var(--ink-soft); font-size: 18px; }
+
+  .ledger { margin-top: 34px; display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .item { display: grid; grid-template-columns: 180px 1fr; gap: 22px; padding: 22px 24px; background: var(--card); }
+  .item + .item { border-top: 1px solid var(--line); }
+  .item h3 { font-size: 20px; margin: 0; }
+  .item p { margin: 0; color: var(--ink-soft); font-size: 15.5px; }
+  @media (max-width: 680px) { .item { grid-template-columns: 1fr; gap: 8px; } }
+
+  .score { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 30px; }
+  @media (max-width: 680px) { .score { grid-template-columns: 1fr; } }
+  .tier { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .tier .tag { font: 600 12px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; display: inline-block; margin-bottom: 11px; }
+  .tier.hi .tag { color: #7a3327; background: color-mix(in srgb, #7a3327 13%, transparent); }
+  .tier.md .tag { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+  .tier.lo .tag { color: var(--muted); background: color-mix(in srgb, var(--muted) 15%, transparent); }
+  .tier p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+
+  .cadence { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .beat { flex: 1 1 120px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 15px; }
+  .beat b { font-family: var(--serif); font-size: 19px; color: var(--accent); }
+  .beat span { display: block; margin-top: 4px; font-size: 13.5px; color: var(--ink-soft); }
+
+  .faq { margin-top: 22px; }
+  details { border-top: 1px solid var(--line); padding: 16px 0; }
+  details summary { font-family: var(--serif); font-size: 18px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; color: var(--accent); font-family: var(--sans); }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 12px 0 0; color: var(--ink-soft); font-size: 15.5px; }
+
+  .cta { text-align: center; }
+  .cta h2 { margin-bottom: 10px; }
+  footer { padding: 40px 0 56px; }
+  .foot { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; }
+  .foot a { color: var(--ink-soft); text-decoration: none; font-size: 14.5px; }
+  .foot a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .foot .sp { margin-left: auto; color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="#top"><span class="mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 22c2-7 5-10 8-10s3 3 0 4-3 3 0 3 5-2 8-7" fill="none" stroke="#c79a5c" stroke-width="2.4" stroke-linecap="round"/></svg></span>LeadFlow AI</a>
+    <nav class="nav">
+      <a href="#capabilities">What it does</a>
+      <a href="#scoring">Lead scoring</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn solid" href="https://github.com/umer-78/leadflow">Get it on GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Patient intake for dental &amp; aesthetic clinics</p>
+      <h1>The front desk that <em>never closes</em>.</h1>
+      <p class="lead">Most high-value enquiries arrive after hours. LeadFlow AI answers every one in seconds, bounded by your own clinic guidelines, scores how ready the patient is, and follows up until they book or ask you to stop.</p>
+      <div class="cta-row">
+        <a class="btn solid" href="https://github.com/umer-78/leadflow">Get it on GitHub</a>
+        <a class="btn ghost" href="#capabilities">See how it works</a>
+      </div>
+      <p class="note">Runs on free tiers: Google Gemini for the assistant, a free-tier host and database. No per-seat lock-in.</p>
+    </div>
+    <div class="chat" role="figure" aria-label="An example after-hours conversation, bounded by clinic rules">
+      <div class="chat-head"><span>After-hours enquiry</span><span class="live">answering</span></div>
+      <div class="chat-body">
+        <div class="msg them">Hi, how much are veneers? Can I get them before a wedding in 3 weeks?</div>
+        <div class="msg bot">Great question. Veneer pricing depends on an exam, so I will not quote a figure I cannot stand behind. What I can do now is book you a consultation. The earliest is Thursday 9:40am. Shall I hold it?</div>
+        <div class="msg them">Yes please, and will it hurt?</div>
+        <div class="msg bot">I can share general information, but I am not able to give medical advice. Our dentist will answer that at the consult. You are booked for Thursday 9:40am, and I have sent a confirmation.</div>
+      </div>
+      <div class="chat-foot">Bounded by your guidelines: it never invents pricing and refuses to diagnose. Every reply is logged.</div>
+    </div>
+  </div>
+</div>
+
+<section id="capabilities">
+  <div class="wrap">
+    <p class="kicker">What it does</p>
+    <h2>An intake machine, not a chatbot</h2>
+    <p class="section-lead">Four jobs a front desk does, running around the clock and tenant-isolated per clinic.</p>
+    <div class="ledger">
+      <div class="item"><h3>Answers, within bounds</h3><p>A 24/7 receptionist held to each clinic's verified guidelines. It never fabricates pricing and refuses to give a medical diagnosis, so it protects the practice while it captures the lead.</p></div>
+      <div class="item"><h3>Scores intent, with reasons</h3><p>Every enquiry is sorted into high, medium or low intent with a plain-language rationale, so the team calls the patients worth calling first instead of guessing from a full inbox.</p></div>
+      <div class="item"><h3>Follows up, then stops</h3><p>A structured sequence reaches out over the first week and halts the moment the patient replies, books, or opts out. No clinic ever nags a patient who already said yes or no.</p></div>
+      <div class="item"><h3>Books and logs everything</h3><p>It offers real consultation slots, confirms them, and keeps an audit log of every message, so the practice has a record and the owner can see exactly what was said.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="scoring">
+  <div class="wrap">
+    <p class="kicker">Explainable lead scoring</p>
+    <h2>Why this lead, and why now</h2>
+    <p class="section-lead">The score is never a bare number. It comes with the reasons behind it, so the team can trust it and act on it.</p>
+    <div class="score">
+      <div class="tier hi"><span class="tag">High intent</span><p>Named a high-value procedure, asked about timing or availability, and left a reachable contact. Call first.</p></div>
+      <div class="tier md"><span class="tag">Medium intent</span><p>Clear interest but missing a detail, such as timing or budget readiness. Worth a prompt, well-timed follow-up.</p></div>
+      <div class="tier lo"><span class="tag">Low intent</span><p>Early-stage or information-only. Nurtured gently, never pushed, and never allowed to crowd out the ready patients.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="cadence">
+  <div class="wrap">
+    <p class="kicker">Follow-up that knows when to stop</p>
+    <h2>A week of nudges, called off the instant it should be</h2>
+    <p class="section-lead">The sequence runs on its own and halts on any reply, booking or opt-out. Nothing is sent after the patient has acted.</p>
+    <div class="cadence">
+      <div class="beat"><b>Day 0</b><span>Instant reply and an offer to book</span></div>
+      <div class="beat"><b>Day 1</b><span>A gentle reminder with the next open slot</span></div>
+      <div class="beat"><b>Day 3</b><span>A short answer to the common hesitation</span></div>
+      <div class="beat"><b>Day 7</b><span>A final, no-pressure check-in</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <p class="kicker">Questions</p>
+    <h2>Before you deploy</h2>
+    <div class="faq">
+      <details><summary>How does it avoid saying the wrong thing?</summary><p>The assistant is constrained to each clinic's own guidelines. It will not quote prices it cannot stand behind and it refuses to give medical advice or a diagnosis, deferring those to the clinician at the consultation. Every message is logged so the practice can review what was said.</p></details>
+      <details><summary>Does it work for more than one clinic?</summary><p>Yes. It is multi-tenant by construction: each practice's leads, calendar and knowledge base are isolated from every other, and that isolation is checked by an in-app test runner.</p></details>
+      <details><summary>What does it cost to run?</summary><p>It is designed to run on free tiers: Google Gemini's free prototyping tier for the assistant, and a free-tier host and database. The repository includes a step-by-step zero-cost deployment guide.</p></details>
+      <details><summary>Can I self-host it?</summary><p>Yes. LeadFlow AI is open source. The repository ships a Dockerfile and deployment configuration, so you can run it on your own host with your own keys.</p></details>
+      <details><summary>Is patient data handled responsibly?</summary><p>Conversations are stored per clinic for the follow-up sequence and the audit log, isolated between tenants. See the Privacy Policy for what is kept and for how long. Treat any clinical or payment workflow as subject to your local healthcare rules.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>Put the front desk on duty tonight</h2>
+    <p class="section-lead" style="margin: 0 auto 24px;">Clone it, add a free Gemini key, and follow the deploy guide. It answers the next after-hours enquiry for you.</p>
+    <a class="btn solid" href="https://github.com/umer-78/leadflow">Get it on GitHub</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <a href="https://github.com/umer-78/leadflow">Source on GitHub</a>
+    <a href="terms.html">Terms of Service</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="https://umer-78.github.io/">More projects</a>
+    <span class="sp">Built by Umer Hashmi</span>
+  </div>
+</footer>
+</body>
+</html>

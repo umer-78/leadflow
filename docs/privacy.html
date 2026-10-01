@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — LeadFlow AI</title><link rel="stylesheet" href="_legal.css"></head><body><div class="wrap">
+<a class="back" href="./">&larr; LeadFlow AI</a>
+<h1>Privacy Policy</h1><p class="meta">Last updated: 1 October 2026</p>
+<p>LeadFlow AI is self-hosted software. When you deploy it, the clinic or agency running it is the data controller, and this policy describes how the software handles data so you can meet your own obligations.</p>
+<h2>What the software stores</h2>
+<ul>
+<li>The content of enquiries and the assistant's replies, so it can follow up and keep an audit log.</li>
+<li>Contact details a patient provides, such as a name, phone or email, used only to respond and follow up.</li>
+<li>Booking details for the consultations it schedules.</li>
+</ul>
+<p>Each clinic's data is isolated from every other clinic in the same deployment (multi-tenant isolation), and that isolation is checked by the project's tests.</p>
+<h2>What it does not do</h2>
+<p>It does not sell data, and it does not share patient data between tenants. It sends message content to the language-model provider you configure only to generate replies; choose a provider whose terms fit your requirements.</p>
+<h2>Retention</h2>
+<p>Enquiry and audit records are kept for as long as the operator configures. As operator you should set a retention period appropriate to your local rules and delete data on request.</p>
+<h2>Your rights</h2>
+<p>Because the deployment is controlled by the clinic, requests to access or delete personal data should go to that clinic. The software provides the operator with the means to find and remove a patient's records.</p>
+<h2>Security</h2>
+<p>Keep your API keys and database credentials secret, serve the app over HTTPS, and restrict access to the owner console. The repository's deployment guide covers the baseline setup.</p>
+<hr><p class="meta">Questions: open an issue on the <a href="https://github.com/umer-78/leadflow">GitHub repository</a>.</p>
+</div></body></html>
