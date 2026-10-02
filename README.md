@@ -86,3 +86,23 @@ Run the built-in system verification suite via the **"Security & Tests"** tab in
 - **Automation Opt-Out**: Asserts suppression of all outbound messages for `DO_NOT_CONTACT` leads.
 - **Lead Scoring**: Validates transparent point computation for high-value procedures.
 - **E2E Customer Journey**: Simulates visitor prompt to qualified lead extraction and appointment queue.
+- **Stripe Checkout Pricing Math**: Asserts checkout line items match each plan's monthly and setup fees.
+- **Billing Demo-Mode Gate**: Asserts card checkout stays off until a real key is set.
+
+## 7. Billing (Stripe) — optional, off by default
+
+The app runs in demo mode with no payment keys. To take real subscription payments
+for the Starter / Growth / Pro plans:
+
+1. In your [Stripe dashboard](https://dashboard.stripe.com), copy your secret key and
+   create a webhook pointing at `https://<your-app>/api/billing/webhook`.
+2. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` (see `.env.example`) and redeploy.
+
+That is all — the server exposes:
+- `GET /api/billing/config` — whether checkout is live and the current plans.
+- `POST /api/billing/checkout` `{ planId, orgId }` — returns a Stripe Checkout URL.
+- `POST /api/billing/webhook` — on a completed checkout, activates the org on its plan.
+
+Prices come from `PLAN_CONFIGS` (`src/lib/billing/provider.ts`); the monthly fee is a
+recurring subscription and the setup fee is billed once on the first invoice. Nothing
+is charged and no key is required until you set the two variables above.
