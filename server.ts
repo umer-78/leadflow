@@ -8,7 +8,15 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import Stripe from 'stripe';
 import { persistenceService } from './src/db/persistence-service.ts';
+import { PLAN_CONFIGS } from './src/lib/billing/provider.ts';
+import {
+  isStripeConfigured,
+  buildCheckoutParams,
+  planActivationFromEvent,
+  type PlanId,
+} from './src/lib/billing/stripe-provider.ts';
 
 dotenv.config();
 
@@ -18,7 +26,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Parse JSON for every route except the Stripe webhook, which needs the raw body
+// for signature verification.
+app.use((req, res, next) => {
+  if (req.path === '/api/billing/webhook') return next();
+  return express.json()(req, res, next);
+});
 
 // Cloud AI Engine - Google Gemini API
 const apiKey = process.env.GEMINI_API_KEY;
@@ -26,6 +39,12 @@ let aiClient: GoogleGenAI | null = null;
 if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
   aiClient = new GoogleGenAI({ apiKey });
 }
+
+// Payments - Stripe (optional; stays null until STRIPE_SECRET_KEY is set, so the
+// app runs in demo mode out of the box and goes live the moment a key is added).
+const stripe: Stripe | null = isStripeConfigured()
+  ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
+  : null;
 
 // Cloud Health Endpoint
 app.get('/api/health', (req, res) => {
@@ -459,6 +478,78 @@ ${(knowledgeChunks && knowledgeChunks.join('\n---\n')) || 'General cosmetic and 
     providerUsed: 'LeadFlow Cloud Knowledge Engine',
     latencyMs: 20,
   });
+});
+
+// ---- Billing (Stripe) ------------------------------------------------------
+
+// Whether card checkout is live, and the plans on offer (so the UI can show real
+// "Subscribe" buttons when enabled, or fall back to "contact us" when not).
+app.get('/api/billing/config', (req, res) => {
+  res.json({ enabled: !!stripe, plans: PLAN_CONFIGS });
+});
+
+// Create a Stripe Checkout session for a plan and return its hosted URL.
+app.post('/api/billing/checkout', async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({
+        error: 'Card payments are not enabled yet. Set STRIPE_SECRET_KEY to turn on checkout.',
+      });
+    }
+    const { planId, orgId, customerEmail } = req.body || {};
+    const plan = PLAN_CONFIGS[planId as PlanId];
+    if (!plan) return res.status(400).json({ error: `Unknown plan: ${planId}` });
+    if (!orgId) return res.status(400).json({ error: 'orgId is required' });
+
+    const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.checkout.sessions.create(
+      buildCheckoutParams(plan, {
+        orgId,
+        customerEmail,
+        successUrl: `${base}/?billing=success&plan=${plan.id}`,
+        cancelUrl: `${base}/?billing=cancelled`,
+      })
+    );
+    res.json({ url: session.url });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stripe webhook: on a completed checkout, activate the org on its new plan.
+// Uses the raw body (registered above) for signature verification.
+app.post('/api/billing/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Billing not configured' });
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const sig = req.headers['stripe-signature'];
+  if (!secret || !sig) return res.status(400).json({ error: 'Missing webhook signature or secret' });
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, secret);
+  } catch (err: any) {
+    return res.status(400).json({ error: `Signature verification failed: ${err.message}` });
+  }
+
+  try {
+    const activation = planActivationFromEvent(event);
+    if (activation) {
+      const plan = PLAN_CONFIGS[activation.planId];
+      const org = await persistenceService.getOrganization(activation.orgId);
+      if (org) {
+        await persistenceService.upsertOrganization({
+          ...org,
+          status: 'ACTIVE',
+          planId: plan.id,
+          monthlyFee: plan.monthlyFee,
+          setupFee: plan.setupFee,
+        });
+      }
+    }
+    res.json({ received: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Mount Vite or serve static assets
