@@ -1,15 +1,33 @@
-# Deploy LeadFlow AI free on Render: a web service from the Dockerfile.
-# Set GEMINI_API_KEY (free tier) and DATABASE_URL in the Render dashboard.
+# Deploy LeadFlow AI on Render as a web service built from the Dockerfile.
+# Secrets are marked `sync: false` so Render prompts for them (never committed).
+# See DEPLOY.md for the full runbook.
 services:
   - type: web
     name: leadflow
     runtime: docker
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      # AI receptionist (Google Gemini free tier). Without it the app runs in a
+      # mock/demo AI mode.
       - key: GEMINI_API_KEY
         sync: false
+      # Postgres connection string. Optional — without it the app keeps state
+      # locally (fine for a demo, not for real tenants).
       - key: DATABASE_URL
+        sync: false
+      # JWT signing secret (min 32 chars). Set a long random value.
+      - key: AUTH_SECRET
+        sync: false
+      # Stripe billing (optional). Leave unset to stay in demo mode; set both to
+      # turn on real subscription checkout. See DEPLOY.md and .env.example.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Public base URL for Stripe return links; defaults to the request host if
+      # unset. Set it to your Render URL to be explicit.
+      - key: PUBLIC_BASE_URL
         sync: false
