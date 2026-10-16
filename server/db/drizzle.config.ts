@@ -1,0 +1,9 @@
+// Generates SQL migrations from the schema: npm run db:generate
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  schema: './server/db/schema.ts',
+  out: './server/db/migrations',
+  dialect: 'postgresql',
+  dbCredentials: { url: process.env.DATABASE_URL || 'postgresql://localhost/leadflow' },
+});

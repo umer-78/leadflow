@@ -35,10 +35,19 @@ export interface SearchIndexOptions {
   b?: number;
 }
 
+export interface Concept {
+  /** The query's own (stemmed) words behind this concept; empty for synonym-only concepts. */
+  originals: string[];
+  /** Stemmed term -> weight (1 for the query's words, lower for synonyms). */
+  terms: Map<string, number>;
+}
+
 export interface QueryAnalysis {
   /** Corrected tokens, stop words included, in order. */
   tokens: string[];
-  /** Stemmed query term -> weight (1 for original terms, lower for synonyms). */
+  /** One entry per thing asked about (a word plus its synonyms). */
+  concepts: Concept[];
+  /** Every concept term -> its best weight. */
   weights: Map<string, number>;
   /** Stemmed original (non-synonym) terms in order. */
   original: string[];
@@ -155,25 +164,44 @@ export class SearchIndex<T = unknown> {
     return Math.log(1 + (n - df + 0.5) / (df + 0.5));
   }
 
-  /** Spell-correct, expand synonyms and stem a query. */
+  /**
+   * Spell-correct, stem and expand a query into concepts. A concept is one
+   * thing being asked about: an original word plus its synonyms. Scoring takes
+   * the best match per concept, so a passage stuffed with synonyms of one word
+   * can't outrank a passage that answers the whole question.
+   */
   analyze(query: string): QueryAnalysis {
     const tokens = tokenize(query).map((t) => (STOPWORDS.has(t) ? t : this.vocab.correct(t)));
-    const original = tokens.filter((t) => !STOPWORDS.has(t)).map(stem);
-    const weights = new Map<string, number>();
-    for (const t of original) weights.set(t, 1);
+    const original = [...new Set(tokens.filter((t) => !STOPWORDS.has(t)).map(stem))];
+    const concepts: Concept[] = original.map((t) => ({ originals: [t], terms: new Map([[t, 1]]) }));
 
     for (const group of this.synonymGroups) {
-      const present = group.some((phrase) => containsPhrase(tokens, phrase));
-      if (!present) continue;
+      const triggered = group.filter((phrase) => containsPhrase(tokens, phrase));
+      if (!triggered.length) continue;
+      const triggerStems = new Set(triggered.flatMap((p) => p.filter((t) => !STOPWORDS.has(t)).map(stem)));
+      const touched = concepts.filter((c) => c.originals.some((o) => triggerStems.has(o)));
+      let target = touched[0];
+      if (!target) {
+        target = { originals: [], terms: new Map() };
+        concepts.push(target);
+      }
+      for (const other of touched.slice(1)) {
+        for (const [k, v] of other.terms) target.terms.set(k, Math.max(target.terms.get(k) ?? 0, v));
+        target.originals.push(...other.originals);
+        concepts.splice(concepts.indexOf(other), 1);
+      }
       for (const phrase of group) {
         for (const t of phrase) {
           if (STOPWORDS.has(t)) continue;
-          const s = stem(t);
-          if ((weights.get(s) ?? 0) < this.synonymWeight) weights.set(s, this.synonymWeight);
+          const st = stem(t);
+          if ((target.terms.get(st) ?? 0) < this.synonymWeight) target.terms.set(st, this.synonymWeight);
         }
       }
     }
-    return { tokens, weights, original };
+
+    const weights = new Map<string, number>();
+    for (const c of concepts) for (const [k, v] of c.terms) weights.set(k, Math.max(weights.get(k) ?? 0, v));
+    return { tokens, concepts, weights, original };
   }
 
   search(
@@ -183,7 +211,7 @@ export class SearchIndex<T = unknown> {
     const { limit = 5, minScore = 0, filter } = options;
     if (!this.docs.size) return [];
     const q = this.analyze(query);
-    if (!q.weights.size) return [];
+    if (!q.concepts.length) return [];
 
     const n = this.docs.size;
     const avg: Record<Field, number> = {
@@ -194,9 +222,8 @@ export class SearchIndex<T = unknown> {
     const idf = new Map<string, number>();
     for (const t of q.weights.keys()) idf.set(t, this.idf(t));
     const queryBigrams = bigramsOf(q.original);
-    const coverageBase = new Set(q.original.length ? q.original : q.weights.keys());
-    let coverageTotal = 0;
-    for (const t of coverageBase) coverageTotal += idf.get(t) ?? 0;
+    const conceptIdf = (c: Concept) => c.originals.reduce((sum, o) => sum + (idf.get(o) ?? 0), 0);
+    const coverageTotal = q.concepts.reduce((sum, c) => sum + conceptIdf(c), 0);
 
     const hits: SearchHit<T>[] = [];
     for (const [id, entry] of this.docs) {
@@ -204,17 +231,23 @@ export class SearchIndex<T = unknown> {
       let score = 0;
       let covered = 0;
       const matched: string[] = [];
-      for (const [t, w] of q.weights) {
-        let tf = 0;
-        for (const f of FIELDS) {
-          const raw = entry.tf[f].get(t);
-          if (!raw) continue;
-          tf += (this.weights[f] * raw) / (1 - this.b + (this.b * entry.len[f]) / avg[f]);
+      for (const concept of q.concepts) {
+        let best = 0;
+        for (const [t, w] of concept.terms) {
+          let tf = 0;
+          for (const f of FIELDS) {
+            const raw = entry.tf[f].get(t);
+            if (!raw) continue;
+            tf += (this.weights[f] * raw) / (1 - this.b + (this.b * entry.len[f]) / avg[f]);
+          }
+          if (!tf) continue;
+          matched.push(t);
+          best = Math.max(best, w * (idf.get(t) ?? 0) * ((tf * (this.k1 + 1)) / (tf + this.k1)));
         }
-        if (!tf) continue;
-        matched.push(t);
-        score += w * (idf.get(t) ?? 0) * ((tf * (this.k1 + 1)) / (tf + this.k1));
-        if (coverageBase.has(t)) covered += idf.get(t) ?? 0;
+        if (best > 0) {
+          score += best;
+          covered += conceptIdf(concept);
+        }
       }
       if (!score) continue;
       for (const bg of queryBigrams) {
@@ -224,7 +257,7 @@ export class SearchIndex<T = unknown> {
         }
       }
       if (score < minScore) continue;
-      hits.push({ id, score, coverage: coverageTotal ? covered / coverageTotal : 0, matched, doc: entry.doc });
+      hits.push({ id, score, coverage: coverageTotal ? covered / coverageTotal : 1, matched, doc: entry.doc });
     }
     hits.sort((a, b) => b.score - a.score);
     return hits.slice(0, limit);
@@ -234,28 +267,40 @@ export class SearchIndex<T = unknown> {
    * The sentences of `text` that best answer `query`, in their original order.
    * Pass the document's title/tags as `topic`: words that only name the topic
    * ("whitening" in a whitening article) then count less than the words that
-   * say what is being asked ("hurt", "how long"). Falls back to the opening
-   * sentences when nothing matches.
+   * say what is being asked ("hurt", "how long"). `minRatio` drops sentences
+   * scoring below that share of the best one. When nothing matches it returns
+   * the opening sentences, or [] with `fallback: false`.
    */
-  passages(text: string, query: string, max = 2, topic: { title?: string; tags?: string[] } = {}): string[] {
+  passages(
+    text: string,
+    query: string,
+    max = 2,
+    topic: { title?: string; tags?: string[] } = {},
+    options: { fallback?: boolean; minRatio?: number } = {}
+  ): string[] {
     const sents = sentences(text);
-    if (sents.length <= max) return sents;
     const q = this.analyze(query);
     const topicTerms = new Set(terms(`${topic.title ?? ''} ${(topic.tags ?? []).join(' ')}`));
     const scored = sents.map((s, i) => {
       const present = new Set(terms(s));
       let match = 0;
-      for (const [t, w] of q.weights) {
-        if (present.has(t)) match += w * this.idf(t) * (topicTerms.has(t) ? 0.25 : 1);
+      for (const concept of q.concepts) {
+        let best = 0;
+        for (const [t, w] of concept.terms) {
+          if (present.has(t)) best = Math.max(best, w * this.idf(t) * (topicTerms.has(t) ? 0.25 : 1));
+        }
+        match += best;
       }
       // Earlier sentences win ties: they usually carry the key fact.
       return { s, i, match, rank: match + (sents.length - i) * 0.001 };
     });
+    const top = Math.max(0, ...scored.map((x) => x.match));
+    const floor = Math.max(Number.MIN_VALUE, top * (options.minRatio ?? 0));
     const best = scored
-      .filter((x) => x.match > 0)
+      .filter((x) => x.match >= floor)
       .sort((a, b) => b.rank - a.rank)
       .slice(0, max);
-    if (!best.length) return sents.slice(0, max);
+    if (!best.length) return options.fallback === false ? [] : sents.slice(0, max);
     return best.sort((a, b) => a.i - b.i).map((x) => x.s);
   }
 }

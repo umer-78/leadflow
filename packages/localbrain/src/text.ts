@@ -33,7 +33,8 @@ export const STOPWORDS: ReadonlySet<string> = new Set(
     'some such than that the their theirs them themselves then there these they this those through to too ' +
     'under until up very was we were what when where which while who whom why will with would you your ' +
     'yours yourself yourselves im ive id youre dont doesnt didnt cant wont isnt arent wasnt also get got ' +
-    'please hi hello hey thanks thank want wanted like would know tell let us'
+    'please hi hello hey thanks thank want wanted like would know tell let us interested wondering looking info ' +
+    'information question questions asking considering thinking curious u ur r ya pls plz thx'
   ).split(' ')
 );
 

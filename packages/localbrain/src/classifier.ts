@@ -65,7 +65,7 @@ function norm(v: Vec): number {
 
 export class IntentClassifier {
   private defs: IntentDefinition[] = [];
-  private examples: { intent: string; vec: Vec; words: Vec }[] = [];
+  private examples: { intent: string; vec: Vec; words: Vec; contentCount: number }[] = [];
   private idf = new Map<string, number>();
   private unseenIdf = 1;
   private keywords: { intent: string; stems: string[] }[] = [];
@@ -104,6 +104,7 @@ export class IntentClassifier {
         intent: tokenised[i].intent,
         vec: this.weigh(r),
         words: this.weigh(new Map([...r].filter(([k]) => content.has(k)))),
+        contentCount: content.size,
       };
     });
     this.keywords = this.defs.flatMap((d) =>
@@ -137,11 +138,14 @@ export class IntentClassifier {
         const e = ex.vec.get(k);
         if (e) dot += w * e;
       }
-      // How much of the example the message contains: catches the example
-      // phrase embedded in a longer message, which cosine under-rates.
+      // Whether the message contains (nearly) the whole example: catches an
+      // example phrase embedded in a longer message, which cosine under-rates.
+      // A one-word example only counts when that word is all the message says.
       let contained = 0;
-      for (const [k, w] of ex.words) if (qWords.has(k)) contained += w * w;
-      const score = Math.max(dot, 0.8 * contained);
+      if (ex.contentCount >= 2 || [...qWords].every((k) => ex.words.has(k))) {
+        for (const [k, w] of ex.words) if (qWords.has(k)) contained += w * w;
+      }
+      const score = Math.max(dot, contained >= 0.75 ? 0.8 * contained : 0);
       if (score > (best.get(ex.intent) ?? 0)) best.set(ex.intent, score);
     }
 
