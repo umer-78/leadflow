@@ -54,6 +54,9 @@ phones, name, date, time, dictionary values, sentiment, urgency and knowledge hi
 
 - **Add examples**: `classifier.learn('book', ['pencil me in for friday'])`. The model *is* the examples,
   so `classifier.toJSON()` / `IntentClassifier.fromJSON()` save and load it.
+- **Use keywords for one-word signals**: a word that on its own means the intent ("unsubscribe",
+  "insurance") belongs in `keywords`. One-word examples only match short messages, so a word like
+  "see" in "see you" can't drag "do you see kids?" into a goodbye.
 - **Add knowledge**: `index.add({...})`. Synonym groups teach it that "cost" and "how much" mean the same.
 - **Plug in a stronger generator later**: `new Assistant(brain, skills, { refine })`. `refine(draft, ctx)`
   can rewrite or replace a reply with any model you choose. If it throws, the draft is used, so the

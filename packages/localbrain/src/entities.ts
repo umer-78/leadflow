@@ -36,6 +36,18 @@ export function extractPhones(text: string): string[] {
   return out;
 }
 
+/**
+ * Text with contact details and the person's name removed — useful before a
+ * knowledge search, where "I'm Maria, maria@x.com" adds nothing but noise.
+ */
+export function stripPersonalDetails(text: string, name?: string): string {
+  let out = text.replace(EMAIL_RE, ' ').replace(PHONE_RE, ' ');
+  for (const part of name?.split(/\s+/) ?? []) {
+    if (part.length > 1) out = out.replace(new RegExp(`\\b${part.replace(/[^a-z'-]/gi, '')}\\b`, 'gi'), ' ');
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
 /** Pretty-print a normalised phone number (NANP numbers as (555) 123-4567). */
 export function formatPhone(phone: string): string {
   const d = phone.replace(/\D/g, '');

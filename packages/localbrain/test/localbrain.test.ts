@@ -110,7 +110,7 @@ describe('IntentClassifier', () => {
   const clf = new IntentClassifier([
     { name: 'book', examples: ['I want to book an appointment', 'can I schedule a visit', 'do you have any openings next week'], keywords: ['appointment'] },
     { name: 'price', examples: ['how much does it cost', 'what is the price', 'is it expensive'], keywords: ['how much', 'cost'] },
-    { name: 'hours', examples: ['what are your opening hours', 'when are you open', 'are you open on saturday'] },
+    { name: 'hours', examples: ['what are your opening hours', 'when are you open', 'are you open on saturday'], keywords: ['open', 'hours'] },
     { name: 'greet', examples: ['hello', 'hi there', 'good morning'] },
   ]);
 
@@ -119,6 +119,16 @@ describe('IntentClassifier', () => {
     assert.equal(clf.best('how much do veneers cost')?.intent, 'price');
     assert.equal(clf.best('what time do you open tomorrow')?.intent, 'hours');
     assert.equal(clf.best('hiya')?.intent ?? 'none', 'none');
+  });
+
+  it('does not let a one-word example act as a keyword in long messages', () => {
+    const c = new IntentClassifier([
+      { name: 'bye', examples: ['see you', 'goodbye'] },
+      { name: 'kids', examples: ['do you treat children', 'do you see kids'] },
+    ]);
+    assert.equal(c.best('do you see kids at your practice')?.intent, 'kids');
+    assert.equal(c.best('do you see kids')?.intent, 'kids');
+    assert.equal(c.best('see you')?.intent, 'bye');
   });
 
   it('stays unsure about out-of-domain text', () => {

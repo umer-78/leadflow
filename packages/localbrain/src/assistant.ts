@@ -14,6 +14,7 @@ import {
   extractName,
   extractPhones,
   extractTime,
+  stripPersonalDetails,
   todayIn,
   type CalendarDate,
   type DateMatch,
@@ -22,7 +23,7 @@ import {
 import { SearchIndex, type SearchHit } from './search.ts';
 import { analyzeSentiment, analyzeUrgency, type Sentiment, type Urgency } from './sentiment.ts';
 
-export interface Understanding {
+export interface Understanding<K = unknown> {
   text: string;
   /** All intents, best first. */
   intents: IntentScore[];
@@ -38,16 +39,16 @@ export interface Understanding {
   sentiment: Sentiment;
   urgency: Urgency;
   /** Knowledge hits for the message (empty without a knowledge index). */
-  knowledge: SearchHit[];
+  knowledge: SearchHit<K>[];
 }
 
-export interface BrainOptions {
+export interface BrainOptions<K = unknown> {
   intents?: IntentDefinition[];
   /** A pre-trained classifier to share between brains (overrides `intents`). */
   classifier?: IntentClassifier;
   /** Minimum confidence for `intent` (default 0.4). */
   intentThreshold?: number;
-  knowledge?: SearchIndex<any>;
+  knowledge?: SearchIndex<K>;
   dictionaries?: Record<string, EntityDictionary>;
   /** IANA zone used to resolve "tomorrow" etc. (default UTC). */
   timeZone?: string;
@@ -62,13 +63,13 @@ export interface UnderstandContext {
   timeZone?: string;
 }
 
-export class Brain {
+export class Brain<K = unknown> {
   readonly classifier: IntentClassifier;
-  knowledge?: SearchIndex<any>;
+  knowledge?: SearchIndex<K>;
   readonly dictionaries: Record<string, EntityDictionary>;
-  private readonly options: BrainOptions;
+  private readonly options: BrainOptions<K>;
 
-  constructor(options: BrainOptions = {}) {
+  constructor(options: BrainOptions<K> = {}) {
     this.options = options;
     this.classifier = options.classifier ?? new IntentClassifier(options.intents ?? []);
     this.knowledge = options.knowledge;
@@ -79,7 +80,7 @@ export class Brain {
     return todayIn(ctx.timeZone ?? this.options.timeZone ?? 'UTC', ctx.now ?? new Date());
   }
 
-  understand(text: string, ctx: UnderstandContext = {}): Understanding {
+  understand(text: string, ctx: UnderstandContext = {}): Understanding<K> {
     const intents = this.classifier.classify(text);
     const threshold = this.options.intentThreshold ?? 0.4;
     const values: Record<string, string[]> = {};
@@ -87,19 +88,20 @@ export class Brain {
       const found = dict.find(text).map((m) => m.value);
       if (found.length) values[key] = found;
     }
+    const name = extractName(text, { expectingName: ctx.expectingName });
     return {
       text,
       intents,
       intent: pickIntent(intents, threshold),
       emails: extractEmails(text),
       phones: extractPhones(text),
-      name: extractName(text, { expectingName: ctx.expectingName }),
+      name,
       date: extractDate(text, this.today(ctx), { dayFirst: this.options.dayFirst }),
       time: extractTime(text),
       values,
       sentiment: analyzeSentiment(text),
       urgency: analyzeUrgency(text),
-      knowledge: this.knowledge ? this.knowledge.search(text, { limit: 3 }) : [],
+      knowledge: this.knowledge ? this.knowledge.search(stripPersonalDetails(text, name), { limit: 3 }) : [],
     };
   }
 }
@@ -112,49 +114,49 @@ export interface Reply {
   data?: Record<string, unknown>;
 }
 
-export interface SkillContext<S> {
+export interface SkillContext<S, K = unknown> {
   text: string;
-  u: Understanding;
+  u: Understanding<K>;
   state: S;
-  brain: Brain;
+  brain: Brain<K>;
 }
 
-export interface Skill<S> {
+export interface Skill<S, K = unknown> {
   name: string;
   /** Return a reply to handle the turn, or undefined to let the next skill try. */
-  run(ctx: SkillContext<S>): Reply | undefined | Promise<Reply | undefined>;
+  run(ctx: SkillContext<S, K>): Reply | undefined | Promise<Reply | undefined>;
 }
 
-export type Refiner<S> = (
+export type Refiner<S, K = unknown> = (
   draft: Reply,
-  ctx: SkillContext<S> & { skill: string }
+  ctx: SkillContext<S, K> & { skill: string }
 ) => Reply | undefined | Promise<Reply | undefined>;
 
-export interface AssistantOptions<S> {
+export interface AssistantOptions<S, K = unknown> {
   /** Upgrade hook: rewrite or replace a draft reply (errors fall back to the draft). */
-  refine?: Refiner<S>;
+  refine?: Refiner<S, K>;
   /** Per-turn understanding context derived from the state (e.g. expectingName). */
   context?: (state: S) => UnderstandContext;
   /** Reply when no skill handles the turn. */
   fallback?: string;
 }
 
-export interface Turn {
+export interface Turn<K = unknown> {
   reply: Reply;
   skill: string;
-  understanding: Understanding;
+  understanding: Understanding<K>;
 }
 
-export class Assistant<S> {
+export class Assistant<S, K = unknown> {
   constructor(
-    readonly brain: Brain,
-    private readonly skills: Skill<S>[],
-    private readonly options: AssistantOptions<S> = {}
+    readonly brain: Brain<K>,
+    private readonly skills: Skill<S, K>[],
+    private readonly options: AssistantOptions<S, K> = {}
   ) {}
 
-  async reply(text: string, state: S): Promise<Turn> {
+  async reply(text: string, state: S): Promise<Turn<K>> {
     const u = this.brain.understand(text, this.options.context?.(state));
-    const ctx: SkillContext<S> = { text, u, state, brain: this.brain };
+    const ctx: SkillContext<S, K> = { text, u, state, brain: this.brain };
     for (const skill of this.skills) {
       const draft = await skill.run(ctx);
       if (!draft) continue;

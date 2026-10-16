@@ -37,7 +37,7 @@ export function editDistance(a: string, b: string, max = Number.POSITIVE_INFINIT
 /** Maximum edits tolerated for a word of this length. */
 export function typoBudget(length: number): number {
   if (length <= 3) return 0;
-  if (length <= 5) return 1;
+  if (length <= 7) return 1;
   return 2;
 }
 
