@@ -1,0 +1,19 @@
+{
+  "name": "localbrain",
+  "version": "0.1.0",
+  "description": "Dependency-free conversational AI toolkit: intents, entities, knowledge search, sentiment, dialogue. No models to download, no network calls.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "license": "Apache-2.0"
+}
