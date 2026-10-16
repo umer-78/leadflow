@@ -10,13 +10,13 @@ import {
   hashPassword,
   rateLimit,
   readCookie,
-  requireAuth,
+  resolveAuth,
   SESSION_COOKIE,
   setSessionCookie,
   verifyPassword,
 } from '../auth.ts';
 import type { AppDeps } from '../app.ts';
-import { users } from '../db/schema.ts';
+import { organizations, users } from '../db/schema.ts';
 import { HttpError, body, email, route, str } from '../http.ts';
 import { logActivity } from '../leads.ts';
 import { createOrganization } from '../orgs.ts';
@@ -31,6 +31,15 @@ export function authRoutes(deps: AppDeps): Router {
   const r = Router();
   const secure = config.env === 'production';
   const limiter = rateLimit({ windowMs: 15 * 60_000, max: 20 });
+
+  /** Public sign-in page hints: whether the demo clinic exists. */
+  r.get(
+    '/options',
+    route(async (_req, res) => {
+      const [demo] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.isDemo, true)).limit(1);
+      res.json({ demo: !!demo });
+    })
+  );
 
   r.post(
     '/signup',
@@ -89,9 +98,14 @@ export function authRoutes(deps: AppDeps): Router {
 
   r.get(
     '/me',
-    requireAuth(db),
     route(async (req, res) => {
-      const { user, org } = req.auth!;
+      const auth = await resolveAuth(db, req);
+      // 200 with nulls when signed out, so the app can show the sign-in page without an error.
+      if (!auth) {
+        res.json({ user: null, org: null });
+        return;
+      }
+      const { user, org } = auth;
       res.json({
         user: publicUser(user),
         org: { id: org.id, name: org.name, publicKey: org.publicKey, isDemo: org.isDemo, plan: org.plan, planStatus: org.planStatus, timezone: org.timezone },
