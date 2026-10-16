@@ -19,6 +19,7 @@ import {
 } from '../db/schema.ts';
 import { HttpError, body, email, nullableStr, oneOf, route, str, uuidParam } from '../http.ts';
 import { logActivity, newUnsubscribeToken, setLeadStatus } from '../leads.ts';
+import { zonedToUtc } from '../scheduling.ts';
 
 const LEAD_STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'BOOKED', 'WON', 'LOST', 'DO_NOT_CONTACT'];
 const TIERS: LeadTier[] = ['HIGH', 'MEDIUM', 'LOW'];
@@ -389,8 +390,15 @@ export function dashboardRoutes(deps: AppDeps): Router {
     route(async (req, res) => {
       const org = req.auth!.org;
       const b = body(req);
-      const startsAt = parseDate(b.startsAt, 'startsAt');
-      if (!startsAt) throw new HttpError(400, 'startsAt is required.');
+      // Either an exact instant, or a clinic-local date + time (what the dashboard sends).
+      const localDate = str(b, 'date', { max: 10 });
+      const localTime = str(b, 'time', { max: 5 });
+      const startsAt =
+        parseDate(b.startsAt, 'startsAt') ??
+        (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate) && localTime && /^\d{2}:\d{2}$/.test(localTime)
+          ? zonedToUtc(localDate, localTime, org.timezone)
+          : undefined);
+      if (!startsAt) throw new HttpError(400, 'Choose a date and time.');
       const service = str(b, 'service', { required: true, max: 120 })!;
       let leadId = str(b, 'leadId');
       if (leadId) {

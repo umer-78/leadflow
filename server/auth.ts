@@ -78,22 +78,29 @@ declare module 'express-serve-static-core' {
   }
 }
 
+/** The signed-in user and organization for this request, if any. */
+export async function resolveAuth(db: DB, req: Request): Promise<AuthContext | undefined> {
+  const token = readCookie(req, SESSION_COOKIE);
+  if (!token) return undefined;
+  const rows = await db
+    .select({ user: users, org: organizations })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .innerJoin(organizations, eq(organizations.id, users.orgId))
+    .where(and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, new Date())))
+    .limit(1);
+  if (!rows.length) return undefined;
+  const { user, org } = rows[0];
+  return { user: { id: user.id, orgId: user.orgId, email: user.email, name: user.name, role: user.role }, org };
+}
+
 /** Resolve the session cookie into req.auth, or respond 401. */
 export function requireAuth(db: DB) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      const token = readCookie(req, SESSION_COOKIE);
-      if (!token) throw new HttpError(401, 'Please sign in.');
-      const rows = await db
-        .select({ user: users, org: organizations })
-        .from(sessions)
-        .innerJoin(users, eq(users.id, sessions.userId))
-        .innerJoin(organizations, eq(organizations.id, users.orgId))
-        .where(and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, new Date())))
-        .limit(1);
-      if (!rows.length) throw new HttpError(401, 'Your session has expired. Please sign in again.');
-      const { user, org } = rows[0];
-      req.auth = { user: { id: user.id, orgId: user.orgId, email: user.email, name: user.name, role: user.role }, org };
+      const auth = await resolveAuth(db, req);
+      if (!auth) throw new HttpError(401, 'Please sign in.');
+      req.auth = auth;
       next();
     } catch (err) {
       next(err);
