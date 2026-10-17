@@ -1,73 +1,82 @@
-# LeadFlow AI — Deployment Runbook
+# Deploying LeadFlow
 
-Copy-paste steps to take LeadFlow from this repo to a live, sellable SaaS. The app
-is a single container: an Express server (serves the built React client **and** the
-API) plus optional Postgres, Google Gemini, and Stripe billing. Everything is driven
-by environment variables — **no code changes needed to go live.**
+LeadFlow is one container (API + background email worker + web app) and one PostgreSQL
+database. Migrations run automatically when the server starts.
 
-| Path | Cost | Notes |
-| --- | --- | --- |
-| **Render free tier** (steps 1–4) | $0, no card | Spins down after ~15 min idle (first request then waits ~50s). Fine for demos. |
-| **Render paid / Fly.io** | ~$7+/mo | No spin-down; use before real customers. |
+## Option A — Render (blueprint included)
 
----
+1. Push this repository to GitHub.
+2. In Render: **New → Blueprint**, pick the repository. `render.yaml` creates:
+   - `leadflow-db` — managed PostgreSQL (its connection string is wired into `DATABASE_URL`)
+   - `leadflow` — the web service, built from the `Dockerfile`, health check `/api/health`
+3. When prompted, set:
 
-## Step 1 — Push to GitHub
-Already done — the repo contains the `Dockerfile` and `render.yaml` blueprint.
+   | Variable | Value |
+   | --- | --- |
+   | `PUBLIC_BASE_URL` | the service URL, e.g. `https://leadflow.onrender.com` (or your custom domain) |
+   | `RESEND_API_KEY` / `EMAIL_FROM` | optional, see *Email* below |
+   | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | optional, see *Billing* below |
 
-## Step 2 — Deploy to Render
-1. Render Dashboard → **New → Blueprint** → select this repo.
-2. Render reads `render.yaml` and creates the `leadflow` web service (Docker, free plan,
-   health check `/api/health`).
-3. In the service's **Environment** tab set the secrets (`sync: false` means Render
-   prompts for them — see `.env.example` for the full reference):
+4. Deploy, then open `https://<your-url>/api/health` — you should see `"status":"ok"` and `"database":"ok"`.
+5. Open the app, **create your clinic**, and follow the setup checklist on the overview.
 
-   | Variable | Required? | What it does |
-   | --- | --- | --- |
-   | `AUTH_SECRET` | yes | JWT signing secret — use a long random string |
-   | `GEMINI_API_KEY` | recommended | Google Gemini (free tier) for the AI receptionist; without it the AI runs in mock mode |
-   | `DATABASE_URL` | optional | Postgres connection string; without it state is kept locally (demo only) |
-   | `STRIPE_SECRET_KEY` | for billing | turns on real checkout (leave unset = demo mode) |
-   | `STRIPE_WEBHOOK_SECRET` | for billing | signing secret for `/api/billing/webhook` |
-   | `PUBLIC_BASE_URL` | optional | your Render URL, for Stripe return links |
+> Render's free plans sleep when idle and the free database expires after a trial period.
+> Use paid instances for real clinics so follow-up emails go out on time and data persists.
 
-4. Deploy. Verify: open `https://<your-url>/api/health` → `{"status":"HEALTHY",...}`.
+## Option B — any Docker host
 
-## Step 3 — Turn on Stripe billing (optional, when you're ready to charge)
-The pricing is already built (Starter $500 / Growth $1000 / Pro $2000 per month, from
-`src/lib/billing/provider.ts`). To accept real payments:
-
-1. In your [Stripe dashboard](https://dashboard.stripe.com): copy your secret key, and
-   create a webhook pointing at `https://<your-url>/api/billing/webhook`.
-2. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in Render → redeploy.
-
-The server then exposes:
-- `GET /api/billing/config` — whether checkout is live + the plans
-- `POST /api/billing/checkout` `{ planId, orgId }` — returns a Stripe Checkout URL
-- `POST /api/billing/webhook` — a completed checkout activates the org on its plan
-
-Until the keys are set, the checkout endpoint returns a clear "not configured" message
-and the app stays fully usable in demo mode.
-
-## Step 4 — Upgrade to persistent infra before real customers
-Render free is ephemeral and sleeps. Before onboarding paying customers, move to a
-paid Render instance (or Fly.io) and attach a managed **Postgres** (set `DATABASE_URL`)
-so tenant data and sessions persist.
-
----
-
-## Verification checklist (run before each deploy)
 ```bash
-npm ci
-npm run lint    # tsc --noEmit — clean
-npm run build   # vite build — succeeds
+docker build -t leadflow .
+docker run -p 3000:3000 \
+  -e DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/leadflow \
+  -e PUBLIC_BASE_URL=https://leadflow.example.com \
+  leadflow
 ```
 
-## Files that matter for deployment
-| File | Role |
-| --- | --- |
-| `Dockerfile` | Node 22, `npm ci` → build client → `npm start` (Express serves `dist/` + API) |
-| `render.yaml` | Render blueprint (Docker, health check, env var list) |
-| `.env.example` | Complete env var reference |
-| `server.ts` | Express server: API routes, static client, Stripe billing routes |
-| `src/lib/billing/` | Plan config + Stripe checkout/webhook helpers (unit-tested) |
+Any PostgreSQL 14+ works (Supabase, Neon, RDS, Cloud SQL, self-hosted). Connections to
+Supabase/Neon/Render use SSL automatically; for others add `?sslmode=require` if needed.
+
+Run more than one instance if you like: the email worker claims messages with
+`FOR UPDATE SKIP LOCKED`, so nothing is sent twice. Set `RUN_WORKER=false` on instances that
+should only serve traffic.
+
+## Email
+
+Follow-ups, appointment confirmations and staff alerts are always written and listed in the
+dashboard (**Emails**). To actually send them:
+
+1. Create a [Resend](https://resend.com) account and verify your sending domain.
+2. Set `RESEND_API_KEY` and `EMAIL_FROM` (e.g. `Brightside Dental <hello@brightside.com>`).
+3. In the dashboard, set **Settings → Clinic → Send new-lead alerts to**.
+
+Every patient email includes a one-click unsubscribe link (`/u/<token>`).
+
+## Billing (optional)
+
+1. In Stripe, copy your secret key and add a webhook endpoint
+   `https://<your-url>/api/billing/webhook` for the `checkout.session.completed` event.
+2. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, redeploy.
+3. Owners can then subscribe under **Settings → Plan**. Plans and prices live in `server/billing.ts`.
+
+## Putting the chat on a clinic website
+
+**Settings → Website chat** shows the snippet:
+
+```html
+<script src="https://<your-url>/widget.js" data-key="pk_..." async></script>
+```
+
+Paste it before `</body>` (or in the site builder's custom-code area). Optional attributes:
+`data-color="#0f766e"`, `data-label="Chat with us"`. The direct link
+`https://<your-url>/chat.html?key=pk_...` works for emails, social profiles and QR codes.
+
+## Checklist before going live
+
+- [ ] `npm run lint && npm test` pass (CI does this on every push)
+- [ ] `/api/health` reports the database as `ok`
+- [ ] Clinic phone, address, hours and alert email are set
+- [ ] Insurance, payment, new-patient, cancellation and parking policies are filled in and published
+- [ ] Price ranges are set for the treatments you want quoted (others are never quoted)
+- [ ] Treatments you don't offer are hidden in **Knowledge & AI**
+- [ ] A test conversation on the live site creates a lead and an appointment request
+- [ ] Email sending is configured, or the team knows to check the **Emails** page
