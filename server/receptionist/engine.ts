@@ -501,8 +501,19 @@ export class Receptionist {
     const t = c.state;
     const chat = t.chat;
     switch (p.intent) {
-      case 'book':
+      case 'book': {
+        // "Do you have Saturday appointments?" is a question the clinic may have answered itself.
+        const hit = this.strongHit(c.u.knowledge);
+        const article = hit?.doc.data;
+        const asking = /\?\s*$|^(do|does|are|is|can|could|will|what|when|how)\b/i.test(c.text.trim());
+        if (article && hit.coverage >= 0.8 && asking && (article.category === 'POLICY' || article.category === 'FAQ')) {
+          const answer = this.answerArticle(c, article, c.text);
+          this.offer(chat, 'booking');
+          chat.bookingService = c.u.values.service?.[0] ?? chat.service ?? 'Consultation';
+          return { ...answer, text: `${answer.text} Would you like me to find you a time?`, suggestions: ['Yes, find a time', 'No thanks'] };
+        }
         return this.startBooking(c, c.u.values.service?.[0]);
+      }
       case 'reschedule': {
         t.kind = 'reschedule';
         const phone = this.phone();
