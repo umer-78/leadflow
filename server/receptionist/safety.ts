@@ -41,11 +41,11 @@ const GUMS_WHEN_BRUSHING = /\bgums?\b[^.?!]{0,40}\b(brush|brushing|floss|flossin
 
 const PROCEDURE_QUESTION =
   /\b(will|would|does|do|is it|after|during|before|how much)\b[^.?!]{0,40}\b(whiten\w*|implants?|veneers?|braces|aligners?|invisalign|root canals?|cleaning|fillings?|crowns?|extractions?|bonding|surgery|procedure|treatment|injection|numbing)\b/;
-const PAIN = /\b(toothache|tooth ache|pain|painful|hurts?|hurting|aching|aches|ache|sore|throbbing)\b/;
+const PAIN = /\b(toothache|tooth ache|pain|painful|hurts?|hurting|aching|aches|ache|sore|throbbing|killing me)\b/;
 const FIRST_PERSON = /\b(my|i|im|ive|me|mine)\b/;
 const MOUTH = /\b(tooth|teeth|molar|molars|jaw|gum|gums|mouth|wisdom)\b/;
 const INTENSE =
-  /\b(severe|severely|unbearable|excruciating|terrible|horrible|really bad|so bad|so much|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|all night|cant eat|cannot eat|agony|crying)\b/;
+  /\b(severe|severely|unbearable|excruciating|terrible|horrible|really bad|so bad|so much|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|could not sleep|couldnt sleep|all night|cant eat|cannot eat|agony|crying)\b/;
 
 const RULES: Rule[] = [
   // ---- possible medical emergencies
