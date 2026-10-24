@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "test": "node --import tsx --test packages/localbrain/test/*.test.ts test/*.test.ts",
     "db:generate": "drizzle-kit generate --config server/db/drizzle.config.ts",
-    "eval": "tsx test/eval/bench.ts"
+    "eval": "tsx test/eval/bench.ts",
+    "build:site": "vite build --config vite.site.config.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

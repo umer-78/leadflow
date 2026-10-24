@@ -15,5 +15,5 @@
     "noEmit": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["server", "client", "packages", "test", "vite.config.ts"]
+  "include": ["server", "client", "packages", "test", "vite.config.ts", "vite.site.config.ts"]
 }

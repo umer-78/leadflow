@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LeadFlow AI — the front desk that never closes</title>
-<meta name="description" content="An autonomous patient-intake system for dental and aesthetic clinics: a 24/7 AI receptionist bounded by your own guidelines, explainable lead scoring, and follow-up that stops the moment a patient replies or books.">
+<meta name="description" content="A 24/7 AI receptionist for dental clinics that runs on your own server: answers patients from your knowledge base, books real appointment times, flags emergencies, scores leads with reasons and follows up until they book.">
 <meta name="theme-color" content="#16233b">
 <meta property="og:type" content="website">
 <meta property="og:title" content="LeadFlow AI — the front desk that never closes">
-<meta property="og:description" content="A 24/7 AI receptionist for high-value clinics, bounded by your own guidelines. It never invents pricing and refuses to diagnose.">
+<meta property="og:description" content="A 24/7 AI receptionist for dental clinics. Its AI runs on your own server: no API keys, no per-message fees. It never invents prices and never diagnoses.">
 <meta property="og:url" content="https://umer-78.github.io/leadflow/">
 <meta property="og:image" content="https://umer-78.github.io/leadflow/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -99,40 +99,9 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .msg.bot { background: color-mix(in srgb, var(--teal) 24%, var(--card)); color: var(--ink); border: 1px solid var(--line-strong); } }
   .chat-foot { padding: 11px 17px; background: var(--paper-2); border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-soft); }
 
-  /* live in-browser receptionist widget (#try) */
-  .try-grid { margin-top: 34px; display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 20px; align-items: start; }
+  /* live demo (#try): the chat window and side panel are styled by assets/demo.css */
+  .try-grid { margin-top: 18px; display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 20px; align-items: start; }
   @media (max-width: 820px) { .try-grid { grid-template-columns: 1fr; } }
-  .lf-body { padding: 16px 17px; display: grid; gap: 11px; max-height: 320px; overflow-y: auto; }
-  .lf-form { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); background: var(--paper-2); }
-  .lf-form input { flex: 1; min-width: 0; font: 15px var(--sans); padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--card); color: var(--ink); }
-  .lf-form input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
-  .lf-send { font: 600 14px/1 var(--sans); padding: 0 16px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: #f4f1ea; cursor: pointer; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lf-send { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); } }
-  .lf-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 13px 0 0; }
-  .lf-chip { font: 500 13px var(--sans); padding: 7px 11px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); color: var(--ink-soft); cursor: pointer; }
-  .lf-chip:hover { color: var(--ink); border-color: var(--ink); }
-  .lf-panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 19px; }
-  .lf-panel h3 { font: 600 12px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
-  .lf-panel h3:not(:first-child) { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
-  .lf-tier { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
-  .lf-tier .tag { font: 600 12px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; }
-  .lf-tier.hi .tag { color: #7a3327; background: color-mix(in srgb, #7a3327 14%, transparent); }
-  .lf-tier.md .tag { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
-  .lf-tier.lo .tag { color: var(--muted); background: color-mix(in srgb, var(--muted) 15%, transparent); }
-  .lf-tier b { font: 600 28px/1 var(--serif); color: var(--ink); }
-  .lf-tier b span { font: 400 15px var(--sans); color: var(--muted); }
-  .lf-reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .lf-reasons li { font-size: 14px; display: flex; gap: 9px; color: var(--ink-soft); }
-  .lf-reasons li > span { font-weight: 700; flex: none; width: 1ch; text-align: center; }
-  .lf-reasons li.pos > span { color: var(--teal); }
-  .lf-reasons li.neg > span { color: var(--muted); }
-  .lf-reasons em { color: var(--accent); font-style: normal; font-weight: 600; }
-  .lf-cadence { display: grid; gap: 8px; }
-  .lf-beat { display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-2); }
-  .lf-beat b { font: 600 15px var(--serif); color: var(--accent); flex: none; width: 46px; }
-  .lf-beat span { font-size: 13.5px; color: var(--ink-soft); }
-  .lf-beat.off { opacity: 0.4; }
-  .lf-cad-note { font-size: 12.5px; color: var(--muted); margin: 11px 0 0; }
 
   section { padding: clamp(50px, 7vw, 82px) 0; border-bottom: 1px solid var(--line); }
   .kicker { font: 600 13px/1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); margin: 0 0 12px; }
@@ -196,22 +165,24 @@
     <div>
       <p class="eyebrow">Patient intake for dental &amp; aesthetic clinics</p>
       <h1>The front desk that <em>never closes</em>.</h1>
-      <p class="lead">Most high-value enquiries arrive after hours. LeadFlow AI answers every one in seconds, bounded by your own clinic guidelines, scores how ready the patient is, and follows up until they book or ask you to stop.</p>
+      <p class="lead">Most high-value enquiries arrive after hours. LeadFlow AI answers every one in seconds from your own clinic's knowledge, books real open appointment times, spots emergencies, scores how ready the patient is, and follows up until they book or ask you to stop.</p>
       <div class="cta-row">
         <a class="btn solid" href="https://github.com/umer-78/leadflow">Get it on GitHub</a>
         <a class="btn ghost" href="#capabilities">See how it works</a>
       </div>
-      <p class="note">Runs on free tiers: Google Gemini for the assistant, a free-tier host and database. No per-seat lock-in.</p>
+      <p class="note">The AI is built in and runs on your own server: no OpenAI or Gemini keys, no per-message fees, and patient messages never leave your infrastructure.</p>
     </div>
-    <div class="chat" role="figure" aria-label="An example after-hours conversation, bounded by clinic rules">
-      <div class="chat-head"><span>After-hours enquiry</span><span class="live">answering</span></div>
+    <div class="chat" role="figure" aria-label="A real conversation with the demo clinic's assistant">
+      <div class="chat-head"><span>A real conversation</span><span class="live">demo clinic</span></div>
       <div class="chat-body">
-        <div class="msg them">Hi, how much are veneers? Can I get them before a wedding in 3 weeks?</div>
-        <div class="msg bot">Great question. Veneer pricing depends on an exam, so I will not quote a figure I cannot stand behind. What I can do now is book you a consultation. The earliest is Thursday 9:40am. Shall I hold it?</div>
-        <div class="msg them">Yes please, and will it hurt?</div>
-        <div class="msg bot">I can share general information, but I am not able to give medical advice. Our dentist will answer that at the consult. You are booked for Thursday 9:40am, and I have sent a confirmation.</div>
+        <div class="msg them">Hi, how much are veneers? And how long do they last?</div>
+        <div class="msg bot">The typical cost for porcelain veneers here is $950–$2,500 per tooth; your exact cost depends on your exam. Monthly payment plans are available through CareCredit and Cherry. With good care, veneers commonly last 10 to 15 years or more. Would you like to book a consultation?</div>
+        <div class="msg them">do they hurt?</div>
+        <div class="msg bot">Preparing the teeth is usually done with local anaesthetic, and most people feel only mild sensitivity for a few days afterwards.</div>
+        <div class="msg them">ok, can I book for Tuesday afternoon?</div>
+        <div class="msg bot">Here are the openings on Tuesday afternoon: 12 PM, 2 PM or 4 PM. Which one works best?</div>
       </div>
-      <div class="chat-foot">Bounded by your guidelines: it never invents pricing and refuses to diagnose. Every reply is logged.</div>
+      <div class="chat-foot">Prices are quoted only when the clinic sets them. It never diagnoses or recommends medicines.</div>
     </div>
   </div>
 </div>
@@ -220,46 +191,33 @@
   <div class="wrap">
     <p class="kicker">What it does</p>
     <h2>An intake machine, not a chatbot</h2>
-    <p class="section-lead">Four jobs a front desk does, running around the clock and tenant-isolated per clinic.</p>
+    <p class="section-lead">The jobs a front desk does, running around the clock, with every clinic's data kept separate.</p>
     <div class="ledger">
-      <div class="item"><h3>Answers, within bounds</h3><p>A 24/7 receptionist held to each clinic's verified guidelines. It never fabricates pricing and refuses to give a medical diagnosis, so it protects the practice while it captures the lead.</p></div>
+      <div class="item"><h3>Answers precisely</h3><p>It works out what is actually being asked (how long a treatment takes or how long it lasts, whether it hurts, whether it's safe, what it costs) and answers from 60+ clinically reviewed articles and the clinic's own policies. It follows the conversation ("what about veneers?"), handles several questions in one message and typos, and says so when it doesn't know.</p></div>
+      <div class="item"><h3>Keeps patients safe</h3><p>Deterministic safety rules run first: swelling spreading to the eye or neck, trouble breathing or a jaw injury get "call 911"; knocked-out teeth, abscesses and severe pain get first aid, the clinic's number and an urgent staff alert. It never diagnoses and never recommends medicines.</p></div>
       <div class="item"><h3>Scores intent, with reasons</h3><p>Every enquiry is sorted into high, medium or low intent with a plain-language rationale, so the team calls the patients worth calling first instead of guessing from a full inbox.</p></div>
       <div class="item"><h3>Follows up, then stops</h3><p>A structured sequence reaches out over the first week and halts the moment the patient replies, books, or opts out. No clinic ever nags a patient who already said yes or no.</p></div>
-      <div class="item"><h3>Books and logs everything</h3><p>It offers real consultation slots, confirms them, and keeps an audit log of every message, so the practice has a record and the owner can see exactly what was said.</p></div>
+      <div class="item"><h3>Books and logs everything</h3><p>It offers real open times inside opening hours as one-tap buttons, collects contact details with a short form, and never double-books. Every message is logged with why the assistant said it, so the owner can see exactly what was said and teach it new answers.</p></div>
     </div>
   </div>
 </section>
 
 <section id="try">
   <div class="wrap">
-    <p class="kicker">Try it — running in your browser</p>
-    <h2>Type a patient enquiry. Watch the front desk work.</h2>
-    <p class="section-lead">This is the app's own receptionist, knowledge base and lead scorer running live on this page — no server, no API key, no cost. It answers within the clinic's bounds, never invents a price, refuses to diagnose, and scores the lead with its reasons as the conversation reveals them.</p>
-    <div class="try-grid">
-      <div class="chat" aria-label="Live receptionist you can talk to">
-        <div class="chat-head"><span>Front desk</span><span class="live">on duty 24/7</span></div>
-        <div class="lf-body" id="lf-chat" role="log" aria-live="polite"></div>
-        <form class="lf-form" id="lf-form">
-          <input id="lf-input" type="text" autocomplete="off" placeholder="e.g. How much are veneers?" aria-label="Your message to the receptionist">
-          <button class="lf-send" type="submit">Send</button>
-        </form>
-        <div class="chat-foot">Every reply is bounded by the clinic's guidelines and logged. Try the examples below.</div>
-      </div>
-      <div>
-        <div class="lf-panel">
-          <h3>Lead score, with reasons</h3>
-          <div id="lf-score"></div>
-          <h3>Follow-up scheduled</h3>
-          <div id="lf-cadence"></div>
-        </div>
-      </div>
+    <p class="kicker">Try it — the real AI, running in your browser</p>
+    <h2>Talk to the demo clinic's front desk</h2>
+    <p class="section-lead">This is the product's actual receptionist engine, knowledge base and lead scorer, compiled to run on this page. Nothing is sent anywhere. Ask about a treatment, prices, insurance, a toothache, or book a time, and watch the lead it creates.</p>
+    <div class="lfd-examples" aria-label="Example messages">
+      <button type="button" class="lfd-example" data-lf-example="How much are veneers and do you offer payment plans?">Veneers and payment plans</button>
+      <button type="button" class="lfd-example" data-lf-example="Do you do Invisalign? How long does it take?">Invisalign</button>
+      <button type="button" class="lfd-example" data-lf-example="I knocked my tooth out playing soccer!">Knocked-out tooth</button>
+      <button type="button" class="lfd-example" data-lf-example="I'm terrified of the dentist but I really need a cleaning">Nervous patient</button>
+      <button type="button" class="lfd-example" data-lf-example="Is an implant better than a bridge?">Implant or bridge?</button>
+      <button type="button" class="lfd-example" data-lf-example="Can I book a check-up next week? I'm Sam, 555-201-3344">Book a check-up</button>
     </div>
-    <div class="lf-chips" aria-label="Example enquiries">
-      <button class="lf-chip" data-lf-example="How much are veneers, and do you have payment plans?">How much are veneers?</button>
-      <button class="lf-chip" data-lf-example="Can you book me for Invisalign on Tuesday morning? My number is 555-120-9987.">Book Invisalign, Tuesday morning</button>
-      <button class="lf-chip" data-lf-example="My tooth is really swollen and throbbing — is it infected?">Is my tooth infected?</button>
-      <button class="lf-chip" data-lf-example="I need dental implants urgently before my wedding next week.">Implants, urgent</button>
-      <button class="lf-chip" data-lf-example="What are your opening hours?">Opening hours</button>
+    <div class="try-grid">
+      <div id="lf-demo-chat" aria-label="Live demo chat"></div>
+      <aside class="lfd-panel" id="lf-demo-panel" aria-live="polite" aria-label="The lead the conversation creates"></aside>
     </div>
   </div>
 </section>
@@ -296,10 +254,11 @@
     <p class="kicker">Questions</p>
     <h2>Before you deploy</h2>
     <div class="faq">
-      <details><summary>How does it avoid saying the wrong thing?</summary><p>The assistant is constrained to each clinic's own guidelines. It will not quote prices it cannot stand behind and it refuses to give medical advice or a diagnosis, deferring those to the clinician at the consultation. Every message is logged so the practice can review what was said.</p></details>
-      <details><summary>Does it work for more than one clinic?</summary><p>Yes. It is multi-tenant by construction: each practice's leads, calendar and knowledge base are isolated from every other, and that isolation is checked by an in-app test runner.</p></details>
-      <details><summary>What does it cost to run?</summary><p>It is designed to run on free tiers: Google Gemini's free prototyping tier for the assistant, and a free-tier host and database. The repository includes a step-by-step zero-cost deployment guide.</p></details>
-      <details><summary>Can I self-host it?</summary><p>Yes. LeadFlow AI is open source. The repository ships a Dockerfile and deployment configuration, so you can run it on your own host with your own keys.</p></details>
+      <details><summary>Is it a real AI?</summary><p>Yes, and it is built for this job rather than borrowed. It understands intent, typos and texting shorthand, extracts names, phone numbers, emails, dates and times, works out what aspect of a treatment is being asked about, follows the conversation, and picks the sentence in the clinic's knowledge base that answers the question. It is not a generative chatbot, which is deliberate: it can't make up a price, a policy or medical advice. A quality bench of 270+ real patient questions runs on every change.</p></details>
+      <details><summary>How does it avoid saying the wrong thing?</summary><p>Answers come only from the clinic's published articles and settings. Prices are quoted only when the clinic sets them, unfinished policies stay unpublished, safety rules run before anything else, and it refuses to diagnose or recommend medicines. When it isn't sure, it says so and offers the team, and the question is listed for the clinic to teach an answer. Every message is logged.</p></details>
+      <details><summary>Does it work for more than one clinic?</summary><p>Yes. Each practice's leads, appointments, conversations and knowledge base are isolated from every other, and the API tests check that isolation on every change.</p></details>
+      <details><summary>What does it cost to run?</summary><p>One small server and a PostgreSQL database. The AI runs inside the app, so there are no AI API fees at any volume. Email sending uses Resend's API if you add a key; without one, emails are listed in the dashboard instead.</p></details>
+      <details><summary>Can I self-host it?</summary><p>Yes. LeadFlow AI is open source. The repository ships a Dockerfile and a Render blueprint, so you can run it on your own host in a few minutes.</p></details>
       <details><summary>Is patient data handled responsibly?</summary><p>Conversations are stored per clinic for the follow-up sequence and the audit log, isolated between tenants. See the Privacy Policy for what is kept and for how long. Treat any clinical or payment workflow as subject to your local healthcare rules.</p></details>
     </div>
   </div>
@@ -339,7 +298,7 @@
         <ul>
           <li>24/7 AI receptionist web widget</li>
           <li>Knowledge base (up to 15 procedures &amp; FAQs)</li>
-          <li>Instant SMS &amp; email lead notifications</li>
+          <li>Instant email lead alerts</li>
           <li>T+0 and T+1 automated follow-up</li>
           <li>Basic lead dashboard</li>
           <li>Single location</li>
@@ -358,7 +317,7 @@
           <li>Automated high-value lead scoring &amp; triage</li>
           <li>Real-time human staff handoff</li>
           <li>Unlimited knowledge base documents</li>
-          <li>Appointment queue &amp; calendar sync</li>
+          <li>Appointment requests &amp; confirmation workflow</li>
           <li>Dedicated onboarding call</li>
         </ul>
         <a class="pbtn solid" href="mailto:YOUR-EMAIL@example.com?subject=LeadFlow%20Growth">Book a setup call</a>
@@ -379,14 +338,14 @@
         <a class="pbtn outline" href="mailto:YOUR-EMAIL@example.com?subject=LeadFlow%20Pro">Book a setup call</a>
       </div>
     </div>
-    <p class="price-note">Self-hosting instead? The code is open source — clone it, add a free Gemini key, and run it yourself. These plans are the fully-managed, done-for-you option.</p>
+    <p class="price-note">Self-hosting instead? The code is open source — clone it, start a database and run it yourself, no AI keys needed. These plans are the fully-managed, done-for-you option.</p>
   </div>
 </section>
 
 <section class="cta">
   <div class="wrap">
     <h2>Put the front desk on duty tonight</h2>
-    <p class="section-lead" style="margin: 0 auto 24px;">Clone it, add a free Gemini key, and follow the deploy guide. It answers the next after-hours enquiry for you.</p>
+    <p class="section-lead" style="margin: 0 auto 24px;">Clone it, start a database and follow the deploy guide. It answers the next after-hours enquiry for you.</p>
     <a class="btn solid" href="https://github.com/umer-78/leadflow">Get it on GitHub</a>
   </div>
 </section>
@@ -400,6 +359,7 @@
     <span class="sp">Built by Umer Hashmi</span>
   </div>
 </footer>
-<script src="receptionist.js" defer></script>
+<link rel="stylesheet" href="assets/demo.css">
+<script src="assets/demo.js" defer></script>
 </body>
 </html>
