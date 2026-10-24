@@ -52,6 +52,8 @@ const DEMO_PRICES: Record<string, [number, number]> = {
   'checkup-and-cleaning': [150, 300],
   'gum-disease': [600, 1500],
   'teeth-grinding': [300, 800],
+  'sports-mouthguards': [150, 400],
+  'inlays-and-onlays': [650, 1200],
   'severe-toothache': [100, 250],
 };
 
@@ -75,6 +77,17 @@ Please arrive 10 minutes early to complete your forms.`,
   'cancellation-policy': {
     summary: 'Please give us at least 24 hours’ notice if you need to cancel or reschedule.',
     body: 'Late cancellations and missed appointments may incur a $50 fee.',
+  },
+  'meet-the-team': {
+    summary:
+      'Our team is led by Dr. Maya Patel (DDS), a general and cosmetic dentist with 15 years of experience, and Dr. James Okafor (DMD), who focuses on implants and oral surgery.',
+    body: `Our two registered dental hygienists, Lena and Marcus, handle cleanings and gum care.
+You're welcome to ask for a particular dentist when you book.`,
+  },
+  'appointments-and-walk-ins': {
+    summary: 'We see patients by appointment, and we keep time free every day for same-day emergency visits.',
+    body: `If you're in pain or something has broken, call us first thing and we'll fit you in the same day whenever we can.
+Walk-ins are welcome for emergencies, but booking ahead means you won't have to wait.`,
   },
   'location-and-parking': {
     summary: 'Free patient parking is available in the lot behind the building, and street parking is free after 6 PM.',
