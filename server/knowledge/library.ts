@@ -127,6 +127,7 @@ Orthodontists recommend a first orthodontic check by about age 7, when bite prob
     body: `They cover chips, worn edges, stains that whitening can't fix, small gaps and slightly uneven teeth.
 Treatment usually takes two or three visits over a few weeks: a consultation and smile design, preparing and scanning the teeth, then bonding the final veneers.
 Temporary veneers can be worn while the final ones are made.
+Preparing the teeth is usually done with local anaesthetic, and most people feel only mild sensitivity for a few days afterwards.
 Veneers can be made for a single tooth or for several, and a single veneer is shade-matched to the teeth beside it.
 Preparing the teeth usually removes a thin layer of enamel, so traditional veneers are a permanent choice.
 Porcelain resists staining and, with good care, veneers commonly last 10 to 15 years or more.

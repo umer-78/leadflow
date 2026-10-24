@@ -201,6 +201,9 @@ export const QA: QaCase[] = [
   { q: 'my tooth hurts sooo bad', expect: /urgent|call|cold compress/i, skill: /safety_urgent/ },
 
   // ------------------------------------------------------------ unseen-question probes, kept as regression cases
+  { q: 'I need a filling', expect: /repairs a tooth damaged by decay/, not: /inlay, onlay/, source: 'fillings' },
+  { q: 'my dentist said I need a crown', expect: /tooth-shaped cap/, source: 'dental-crowns' },
+  { q: 'How much are veneers and do you offer payment plans?', expect: /\$950–\$2,500/, not: /CareCredit[\s\S]*CareCredit/ },
   { q: 'is invisalign painful', expect: /pressure or soreness/, source: 'clear-aligners' },
   { q: 'whats the recovery time for an implant', expect: /swelling, bruising and tenderness/, source: 'after-implant-surgery' },
   { q: 'can i drink coffee after whitening', expect: /48 hours/, source: 'after-whitening' },

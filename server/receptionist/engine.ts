@@ -26,6 +26,8 @@ import {
   formatPhone,
   joinList,
   pickIntent,
+  sentenceKey,
+  sentences,
   splitQuestions,
   stripPersonalDetails,
   terms,
@@ -236,6 +238,10 @@ const lowerFirst = (s: string) => {
 const isUsable = (a: Article) => a.published && !/\[[^\]]{3,}\]/.test(a.summary);
 
 /** Query words that don't change *what* is being asked about a topic. */
+/** "I'd like veneers", "I think I need a filling": the patient wants the treatment, nothing more specific. */
+const INTEREST =
+  /^(?:(?:hi|hey|hello)[,!\s]+)?(?:(?:i (?:think|guess|believe)|i was told|my dentist (?:said|says|told me))(?: that)? )?(?:i(?:'m| am)? ?(?:want|would like|'d like|need|may need|might need|probably need|am interested in|interested in|looking (?:for|into)|thinking (?:about|of)|considering)|tell me (?:more )?about|info(?:rmation)? (?:on|about))\b/i;
+
 const GENERIC_TERMS = new Set(
   ['tell', 'inform', 'info', 'explain', 'interest', 'offer', 'know', 'learn', 'detail', 'question', 'ask', 'procedur', 'treatment',
     'option', 'servic', 'look', 'consid', 'think', 'someth', 'anyth', 'thing', 'avail', 'provid', 'perform', 'dentist', 'dental',
@@ -469,8 +475,23 @@ export class Receptionist {
         : { text: u.text, kind };
   }
 
+  /** One reply for a multi-question message; a sentence an earlier part already said isn't repeated. */
   private merge(replies: ChatReply[]): ChatReply {
     if (replies.length === 1) return replies[0];
+    const said = new Set<string>();
+    const fresh = (text: string) =>
+      text
+        .split('\n')
+        .map((line) => {
+          if (!line.trim() || /^\s*(?:\d+\.|[•*-])\s/.test(line)) return line;
+          const all = sentences(line);
+          const kept = all.filter((x) => !said.has(sentenceKey(x)));
+          for (const x of all) said.add(sentenceKey(x));
+          return kept.length === all.length ? line : kept.join(' ');
+        })
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     const ui: ReplyUi = {};
     for (const r of replies) {
       if (r.ui?.slots) ui.slots = r.ui.slots;
@@ -480,7 +501,7 @@ export class Receptionist {
     }
     const withSuggestions = [...replies].reverse().find((r) => r.suggestions?.length);
     return {
-      text: replies.map((r) => r.text.trim()).filter(Boolean).join('\n\n'),
+      text: replies.map((r) => fresh(r.text)).filter(Boolean).join('\n\n'),
       suggestions: withSuggestions?.suggestions,
       ui: Object.keys(ui).length ? ui : undefined,
     };
@@ -975,8 +996,10 @@ export class Receptionist {
       prefer.set(id, groupDocs.get(id) ?? (category === 'CONDITION' || category === 'FAQ' ? 1 : 0.6));
     }
     const excluded = new Set([...ruledOut].flatMap((s) => (this.byService.get(s) ?? []).map((a) => a.id)));
-    // "I want a hollywood smile" asks about the treatment as a whole: the words just name it.
-    const interest = /^(?:(?:hi|hey|hello)[,!\s]+)?(?:i(?:'m| am)? ?(?:want|would like|'d like|need|am interested in|interested in|looking (?:for|into)|thinking (?:about|of)|considering)|tell me (?:more )?about|info(?:rmation)? (?:on|about))\b/i.test(query);
+    // "I want a hollywood smile" asks about the treatment as a whole: the words just name it,
+    // and "need" in "I need a filling" isn't something to look for in the answer.
+    const interest = INTEREST.exec(query);
+    const asked = interest ? query.slice(interest[0].length) : query;
     const request = {
       prefer,
       aspects,
@@ -985,11 +1008,11 @@ export class Receptionist {
       boost: (doc: SearchDocument<Article>, asked: string[]) => (excluded.has(doc.id) ? -3 : this.categoryBoost(doc, asked, query)),
       candidates: 5,
     };
-    let answer = this.reader.answer(query, { ...request, within });
+    let answer = this.reader.answer(asked, { ...request, within });
     if (!answer) return undefined;
     // The treatment's own articles don't cover it, but a general one might ("I'm pregnant, can I get a filling?").
     if (within && !context && aspects.length && !answer.onAspect) {
-      const wider = this.reader.answer(query, request);
+      const wider = this.reader.answer(asked, request);
       const names = topicWords.flatMap((w) => terms(w));
       if (wider?.onAspect && wider.sentences.some((x) => terms(x.text).some((w) => names.includes(w)))) answer = wider;
     }
