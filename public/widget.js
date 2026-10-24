@@ -1,7 +1,8 @@
 /*
  * LeadFlow website widget loader. Add to any page:
  *   <script src="https://YOUR-LEADFLOW-HOST/widget.js" data-key="pk_..." async></script>
- * Optional: data-color="#0f766e" (button colour), data-label="Chat with us".
+ * Optional: data-color="#0f766e" (button and chat colour), data-label="Chat with us",
+ * data-teaser="Questions about treatment or prices? Ask me!" (or "off").
  */
 (function () {
   'use strict';
@@ -13,7 +14,10 @@
 
   var origin = new URL(script.src, location.href).origin;
   var color = script.getAttribute('data-color') || '#0f766e';
+  if (!/^#[0-9a-f]{3,8}$/i.test(color)) color = '#0f766e';
   var label = script.getAttribute('data-label') || 'Chat with us';
+  var teaserText = script.getAttribute('data-teaser');
+  if (teaserText === null) teaserText = 'Hi! Questions about treatments, prices or booking? I can help.';
 
   var button = document.createElement('button');
   button.type = 'button';
@@ -37,11 +41,40 @@
       (frame.hidden ? 'display:none;' : '');
   }
 
+  // A small greeting bubble next to the button, once per visit.
+  var teaser = null;
+  function hideTeaser() {
+    if (teaser) teaser.remove();
+    teaser = null;
+  }
+  function showTeaser() {
+    try {
+      if (sessionStorage.getItem('leadflow:teaser')) return;
+      sessionStorage.setItem('leadflow:teaser', '1');
+    } catch (e) {
+      /* storage blocked: show it anyway */
+    }
+    if ((frame && !frame.hidden) || !teaserText || teaserText === 'off') return;
+    teaser = document.createElement('div');
+    teaser.setAttribute('role', 'status');
+    teaser.textContent = teaserText;
+    teaser.style.cssText =
+      'position:fixed;right:20px;bottom:92px;max-width:260px;padding:12px 14px;border-radius:14px;z-index:2147483646;cursor:pointer;' +
+      'background:#fff;color:#16202a;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.18);';
+    teaser.addEventListener('click', function () {
+      hideTeaser();
+      open();
+    });
+    document.body.appendChild(teaser);
+    setTimeout(hideTeaser, 12000);
+  }
+
   function open() {
+    hideTeaser();
     if (!frame) {
       frame = document.createElement('iframe');
       frame.title = label;
-      frame.src = origin + '/chat.html?embed=1&key=' + encodeURIComponent(key);
+      frame.src = origin + '/chat.html?embed=1&key=' + encodeURIComponent(key) + '&color=' + encodeURIComponent(color);
       frame.setAttribute('allow', 'clipboard-write');
       document.body.appendChild(frame);
     }
@@ -69,6 +102,7 @@
 
   function mount() {
     document.body.appendChild(button);
+    setTimeout(showTeaser, 6000);
   }
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);

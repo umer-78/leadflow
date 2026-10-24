@@ -36,6 +36,7 @@ import {
   type Article,
   type ChatState,
   type ClinicPort,
+  type ReplyUi,
   type Slot,
   type SlotPreference,
 } from './receptionist/engine.ts';
@@ -64,6 +65,7 @@ export function clinicProfile(org: Organization) {
     hours: org.hours,
     greeting: org.greeting,
     emergencyInstructions: org.emergencyInstructions,
+    slotMinutes: org.slotMinutes,
   };
 }
 
@@ -126,7 +128,13 @@ export async function widgetConfig(deps: ChatDeps, publicKey: string) {
   const org = await orgByKey(deps.db, publicKey);
   const receptionist = await receptionistFor(deps.db, org);
   return {
-    clinic: { name: org.name, phone: org.phone ? formatPhone(org.phone) : null, website: org.website },
+    clinic: {
+      name: org.name,
+      phone: org.phone ? formatPhone(org.phone) : null,
+      phoneHref: org.phone ? `tel:${org.phone}` : null,
+      website: org.website,
+      address: org.address,
+    },
     greeting: receptionist.greeting(),
   };
 }
@@ -147,12 +155,10 @@ export async function conversationHistory(deps: ChatDeps, publicKey: string, con
     .where(eq(messages.conversationId, convo.id))
     .orderBy(asc(messages.createdAt));
   return {
-    messages: rows.map((m) => ({
-      role: m.role,
-      body: m.body,
-      suggestions: (m.meta as { suggestions?: string[] }).suggestions,
-      createdAt: m.createdAt,
-    })),
+    messages: rows.map((m) => {
+      const meta = m.meta as { suggestions?: string[]; ui?: ReplyUi };
+      return { role: m.role, body: m.body, suggestions: meta.suggestions, ui: meta.ui, createdAt: m.createdAt };
+    }),
   };
 }
 
@@ -166,7 +172,7 @@ export interface ChatInput {
 
 export interface ChatOutput {
   conversationId: string;
-  reply: { text: string; suggestions?: string[] };
+  reply: { text: string; suggestions?: string[]; ui?: ReplyUi };
 }
 
 export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOutput> {
@@ -253,6 +259,7 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
       meta: {
         ...result.meta,
         suggestions: result.reply.suggestions,
+        ui: result.reply.ui,
         // Unanswered questions are listed in the dashboard so the clinic can teach the assistant.
         ...(result.meta.unanswered ? { question: input.message.slice(0, 500) } : {}),
       } as Record<string, unknown>,
@@ -323,7 +330,10 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
       })
       .where(eq(conversations.id, conversation.id));
 
-    return { conversationId: conversation.id, reply: { text: result.reply.text, suggestions: result.reply.suggestions } };
+    return {
+      conversationId: conversation.id,
+      reply: { text: result.reply.text, suggestions: result.reply.suggestions, ui: result.reply.ui },
+    };
   });
 
   if (queuedEmail) deps.kick?.();
