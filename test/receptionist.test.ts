@@ -151,10 +151,13 @@ describe('receptionist', () => {
     assert.equal(optOut.events.optOut, true);
   });
 
-  it('understands typos and admits when it does not know', async () => {
+  it('understands typos, stays on topic and admits when it does not know', async () => {
     const { chat } = demoClinic();
-    const [typo, unknown] = await chat(['do u do invisalgn', 'what is the weather in paris']);
+    const [typo, weather, unknown] = await chat(['do u do invisalgn', 'what is the weather in paris', 'can you do botox for my migraines?']);
     assert.deepEqual(typo.meta.sources.map((s) => s.slug), ['clear-aligners']);
+    assert.match(typo.reply.text, /^Yes, we offer clear aligners/);
+    assert.equal(weather.meta.skill, 'offtopic');
+    assert.match(weather.reply.text, /only help with dental questions/);
     assert.equal(unknown.meta.unanswered, true);
     assert.match(unknown.reply.text, /rather not guess/);
   });
