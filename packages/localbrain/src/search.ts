@@ -31,6 +31,11 @@ export interface SearchIndexOptions {
   synonyms?: string[][];
   /** Weight given to synonym-expanded terms (default 0.6). */
   synonymWeight?: number;
+  /**
+   * Word forms the stemmer doesn't join but that mean the same thing, e.g.
+   * [["pregnant", "pregnancy"], ["anxious", "anxiety"]]: they match at full weight.
+   */
+  equivalents?: string[][];
   k1?: number;
   b?: number;
 }
@@ -51,6 +56,8 @@ export interface QueryAnalysis {
   weights: Map<string, number>;
   /** Stemmed original (non-synonym) terms in order. */
   original: string[];
+  /** Multi-word phrases worth matching together (stems): neighbouring query words and triggered synonym phrases. */
+  phrases: string[][];
 }
 
 type Field = 'title' | 'tags' | 'body';
@@ -83,6 +90,7 @@ export class SearchIndex<T = unknown> {
   private readonly weights: Record<Field, number>;
   private readonly synonymGroups: string[][][];
   private readonly synonymWeight: number;
+  private readonly equivalents = new Map<string, string[]>();
   private readonly k1: number;
   private readonly b: number;
 
@@ -90,6 +98,10 @@ export class SearchIndex<T = unknown> {
     this.weights = { title: 3, tags: 2.5, body: 1, ...options.fieldWeights };
     this.synonymGroups = (options.synonyms ?? []).map((g) => g.map((p) => tokenize(p)).filter((p) => p.length));
     this.synonymWeight = options.synonymWeight ?? 0.6;
+    for (const group of options.equivalents ?? []) {
+      const stems = [...new Set(group.map((w) => stem(w.toLowerCase())))];
+      for (const st of stems) this.equivalents.set(st, stems);
+    }
     this.k1 = options.k1 ?? 1.2;
     this.b = options.b ?? 0.75;
     for (const group of this.synonymGroups) for (const phrase of group) this.vocab.addAll(phrase);
@@ -97,6 +109,16 @@ export class SearchIndex<T = unknown> {
 
   get size(): number {
     return this.docs.size;
+  }
+
+  /** One representative stem for a group of equivalent word forms ("teeth" -> "tooth"). */
+  canonical(stemmed: string): string {
+    return this.equivalents.get(stemmed)?.[0] ?? stemmed;
+  }
+
+  /** Whether `word` (lower-case) appears anywhere in the indexed text or synonyms. */
+  hasWord(word: string): boolean {
+    return this.vocab.has(word);
   }
 
   get(id: string): SearchDocument<T> | undefined {
@@ -173,7 +195,10 @@ export class SearchIndex<T = unknown> {
   analyze(query: string): QueryAnalysis {
     const tokens = tokenize(query).map((t) => (STOPWORDS.has(t) ? t : this.vocab.correct(t)));
     const original = [...new Set(tokens.filter((t) => !STOPWORDS.has(t)).map(stem))];
-    const concepts: Concept[] = original.map((t) => ({ originals: [t], terms: new Map([[t, 1]]) }));
+    const concepts: Concept[] = original.map((t) => ({
+      originals: [t],
+      terms: new Map((this.equivalents.get(t) ?? [t]).map((form) => [form, 1] as [string, number])),
+    }));
 
     for (const group of this.synonymGroups) {
       const triggered = group.filter((phrase) => containsPhrase(tokens, phrase));
@@ -197,11 +222,27 @@ export class SearchIndex<T = unknown> {
           if ((target.terms.get(st) ?? 0) < this.synonymWeight) target.terms.set(st, this.synonymWeight);
         }
       }
+      // "put to sleep" means sedation: on its own, "sleep" is only as strong as a synonym.
+      for (const phrase of triggered) {
+        const words = phrase.filter((t) => !STOPWORDS.has(t)).map(stem);
+        if (phrase.length < 2 || words.length < 1) continue;
+        for (const w of words) if (target.terms.get(w) === 1 && words.length < phrase.length) target.terms.set(w, this.synonymWeight);
+      }
     }
 
     const weights = new Map<string, number>();
     for (const c of concepts) for (const [k, v] of c.terms) weights.set(k, Math.max(weights.get(k) ?? 0, v));
-    return { tokens, concepts, weights, original };
+    const content = tokens.filter((t) => !STOPWORDS.has(t)).map(stem);
+    const phrases: string[][] = [];
+    for (let i = 0; i + 1 < content.length; i++) phrases.push([content[i], content[i + 1]]);
+    for (const group of this.synonymGroups) {
+      if (!group.some((phrase) => containsPhrase(tokens, phrase))) continue;
+      for (const phrase of group) {
+        const words = phrase.filter((t) => !STOPWORDS.has(t)).map(stem);
+        if (words.length >= 2) phrases.push(words);
+      }
+    }
+    return { tokens, concepts, weights, original, phrases };
   }
 
   search(

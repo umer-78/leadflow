@@ -10,3 +10,6 @@ export * from './entities.ts';
 export * from './sentiment.ts';
 export * from './respond.ts';
 export * from './assistant.ts';
+export * from './shorthand.ts';
+export * from './reader.ts';
+export * from './dialogue.ts';

@@ -79,7 +79,10 @@ const NOT_NAME = new Set(
     'emergency help info information question questions same not sure unsure confused ' +
     'been again anyway everyone everybody guys bye goodbye lot much alot you u ya rather prefer ' +
     "i'd i'll i've id ill ive gonna wanna kinda sort kind bit little quite pretty too totally definitely " +
-    'probably maybe perhaps actually literally currently already almost always never sometimes usually recently finally'
+    'probably maybe perhaps actually literally currently already almost always never sometimes usually recently finally ' +
+    'cool nice awesome perfect wow lol haha hmm yay alright excellent brilliant lovely amazing wonderful fantastic noted ' +
+    'understood right correct true false wrong idk dunno whatever nothing something anything everything ' +
+    'own self mine yours ours theirs alone fine'
   ).split(' ')
 );
 
@@ -101,9 +104,18 @@ function pickName(words: string[], strict: boolean): { name: string; count: numb
 }
 
 /** Cues that are almost always followed by a name. */
-const STRONG_NAME_CUES: RegExp[] = [/\bmy name(?:'s| is)\s+(.+)/i, /\bname(?:'s| is)\s*[:-]?\s*(.+)/i, /\bcall me\s+(.+)/i];
+const STRONG_NAME_CUES: RegExp[] = [
+  /\bmy name(?:'s| is)\s+(.+)/i,
+  /\bname(?:'s| is)\s*[:-]?\s*(.+)/i,
+  /(?:^|[\s,])name\s*[:-]\s*(.+)/i,
+  /\bcall me\s+(.+)/i,
+];
 /** Cues that are often followed by something else ("I'm worried", "this is urgent"). */
-const WEAK_NAME_CUES: RegExp[] = [/\b(?:i am|i'm|im|this is|it's|its|it is)\s+(.+)/i, /\b(?:regards|cheers),?\s+(.+)$/i];
+const WEAK_NAME_CUES: RegExp[] = [
+  /(?:^|[.,!?;]\s*|\b(?:hi|hello|hey|yes|yeah|ok|okay)[,!]?\s+)(?:i am|i'm|im)\s+(.+)/i,
+  /(?:^|[.,!?;]\s*|\b(?:hi|hello|hey|yes|yeah|ok|okay)[,!]?\s+)(?:this is|it's|its|it is)\s+(.+)/i,
+  /\b(?:regards|cheers),?\s+(.+)$/i,
+];
 
 const splitWords = (s: string) => s.split(/[\s,]+/).filter(Boolean);
 
@@ -144,6 +156,28 @@ export function extractName(text: string, options: { expectingName?: boolean } =
     }
   }
   return undefined;
+}
+
+/**
+ * A message that is nothing but a name ("Sarah Connor", or "sam" when
+ * `lenient`): 1-3 words, none of them a known word. `isKnown` receives each
+ * lower-cased word, so callers can plug in their own vocabulary.
+ */
+export function bareName(text: string, isKnown: (word: string) => boolean = () => false, lenient = false): string | undefined {
+  const cleaned = text
+    .replace(EMAIL_RE, ' ')
+    .replace(PHONE_RE, ' ')
+    .trim()
+    .replace(/[.!,]+$/, '')
+    .replace(/^(?:it's|its|it is|this is|i'm|im|i am|name:?|my name:?)\s+/i, '')
+    .trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 3) return undefined;
+  if (!words.every((w) => NAME_WORD.test(w))) return undefined;
+  if (!lenient && !words.every((w) => /^[A-Z]/.test(w))) return undefined;
+  if (words.some((w) => NOT_NAME.has(w.toLowerCase()) || isKnown(w.toLowerCase()))) return undefined;
+  if (words.length === 1 && words[0].length < 2) return undefined;
+  return titleCase(words.join(' '));
 }
 
 // ---------------------------------------------------------------------------
@@ -352,7 +386,12 @@ export interface DictionaryMatch {
   value: string;
   /** Position (token index) of the match. */
   index: number;
+  /** The words that matched, as typed (lower-cased tokens). */
+  text: string;
 }
+
+/** Words that don't change which thing is meant: "pull my tooth" is "pull a tooth". */
+const DICT_SKIP = new Set(['a', 'an', 'the', 'my', 'your', 'our', 'his', 'her', 'their', 'some', 'this', 'that', 'these', 'those']);
 
 export class EntityDictionary {
   private readonly phrases: { value: string; stems: string[] }[] = [];
@@ -364,7 +403,7 @@ export class EntityDictionary {
 
   add(entry: DictionaryEntry): void {
     for (const p of [entry.value, ...(entry.synonyms ?? [])]) {
-      const tokens = tokenize(p);
+      const tokens = tokenize(p).filter((t) => !DICT_SKIP.has(t));
       if (!tokens.length) continue;
       this.vocab.addAll(tokens);
       this.phrases.push({ value: entry.value, stems: tokens.map(stem) });
@@ -374,8 +413,14 @@ export class EntityDictionary {
   }
 
   /** All distinct values mentioned in `text`, in order of appearance. */
+  /** Whether `word` (lower-case) is part of any phrase in the dictionary. */
+  hasWord(word: string): boolean {
+    return this.vocab.has(word);
+  }
+
   find(text: string): DictionaryMatch[] {
-    const stems = tokenize(text).map((t) => stem(this.vocab.correct(t)));
+    const tokens = tokenize(text).filter((t) => !DICT_SKIP.has(t));
+    const stems = tokens.map((t) => stem(this.vocab.correct(t)));
     const used = new Array(stems.length).fill(false);
     const out: DictionaryMatch[] = [];
     for (const p of this.phrases) {
@@ -389,7 +434,9 @@ export class EntityDictionary {
         }
         if (!ok) continue;
         for (let j = 0; j < p.stems.length; j++) used[i + j] = true;
-        if (!out.some((o) => o.value === p.value)) out.push({ value: p.value, index: i });
+        if (!out.some((o) => o.value === p.value)) {
+          out.push({ value: p.value, index: i, text: tokens.slice(i, i + p.stems.length).join(' ') });
+        }
       }
     }
     return out.sort((a, b) => a.index - b.index);
