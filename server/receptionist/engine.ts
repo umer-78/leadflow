@@ -255,6 +255,9 @@ const COST_TERMS = new Set(
 );
 
 /** Title words too general to tie an article to a treatment ("Sensitive teeth" is not about whitening). */
+/** Words in a service's name that many unrelated article titles share. */
+const BROAD_NAME = new Set(['gum', 'dentistry'].flatMap((w) => terms(w)));
+
 const GENERIC_TITLE = new Set(
   ['tooth', 'teeth', 'dental', 'treatment', 'care', 'option', 'visit', 'your', 'home', 'follow', 'after', 'up', 'check', 'surgery', 'and']
     .flatMap((w) => terms(w))
@@ -834,7 +837,10 @@ export class Receptionist {
         return this.policyReply(c, 'payment-and-financing', 'payment and financing', 'financing');
       case 'insurance': {
         chat.signals.insurance = true;
-        const reply = this.policyReply(c, 'insurance', 'insurance', 'insurance');
+        let reply = this.policyReply(c, 'insurance', 'insurance', 'insurance');
+        // "Does Medicare cover dental?": general insurance facts answer what the clinic's own policy doesn't.
+        const general = this.generalFact(c, 'dental-insurance-basics', reply.text);
+        if (general) reply = { ...reply, text: `${reply.text} ${general}` };
         // "Does insurance pay for whitening?" deserves a direct word on that treatment first.
         if (service && service !== 'Emergency visit' && /\b(cover|covers|covered|pay|pays|paid)\b/i.test(text)) {
           const lead = COSMETIC.has(service)
@@ -975,7 +981,9 @@ export class Receptionist {
     const specific = this.isSpecific(query, topicWords);
     const aspects = c.u.aspects.length ? c.u.aspects : specific ? [] : ['definition'];
     // Named treatments narrow the search to their own articles ("will a crown look natural?" is not about implants).
-    const within = context && !anxiety ? [context.id] : services.length ? this.articlesAbout(c, services, ruledOut, anxiety) : undefined;
+    // "Is fluoride safe for kids?" is about fluoride: who it's for only steers the search, it doesn't limit it.
+    const peopleOnly = services.length > 0 && services.every((s) => qualifiers.has(s)) && specific;
+    const within = context && !anxiety ? [context.id] : services.length && !peopleOnly ? this.articlesAbout(c, services, ruledOut, anxiety) : undefined;
     // Questions about a group of people ("I'm pregnant, can I...") also read the article written for them.
     const groups: string[] = aspects.filter((a) => a === 'pregnancy' || a === 'children');
     const groupDocs = new Map<string, number>();
@@ -1018,7 +1026,15 @@ export class Receptionist {
     }
     if (!prefer.size && answer.confidence < 0.45) return undefined;
     // A specific question the articles don't cover ("do implants set off metal detectors?").
-    const uncovered = c.u.question && specific && !c.u.aspects.length && answer.match < 0.25 && !capability && !anxiety;
+    let uncovered = c.u.question && specific && !c.u.aspects.length && answer.match < 0.25 && !capability && !anxiety;
+    // "Should I stop my blood thinner before an extraction?": the extraction articles don't say, another article does.
+    if (uncovered && within) {
+      const wider = this.reader.answer(asked, { ...request, prefer: new Map() });
+      if (wider && !within.includes(wider.doc.id) && wider.match >= 0.3) {
+        answer = wider;
+        uncovered = false;
+      }
+    }
     return this.answerFrom(c, answer, { capability, remedy, uncovered });
   }
 
@@ -1027,7 +1043,8 @@ export class Receptionist {
     const ids = new Set<string>();
     for (const s of services) for (const a of this.byService.get(s) ?? []) ids.add(a.id);
     const matches = (c.u.matches.service ?? []).filter((m) => !ruledOut.has(m.value));
-    const keys = [...matches.map((m) => terms(m.text)), ...services.map((s) => terms(s).filter((x) => !GENERIC_TITLE.has(x)))];
+    // A service's own name is matched by its distinctive words ("Gum contouring" isn't about every "gum" article).
+    const keys = [...matches.map((m) => terms(m.text)), ...services.map((s) => terms(s).filter((x) => !GENERIC_TITLE.has(x) && !BROAD_NAME.has(x)))];
     for (const doc of this.index.all()) {
       const title = new Set(terms(doc.title ?? ''));
       const tags = (doc.tags ?? []).map((tag) => new Set(terms(tag)));
@@ -1399,6 +1416,20 @@ export class Receptionist {
       if (line) parts.push(line);
     }
     return { text: parts.join(' ') };
+  }
+
+  /** A sentence from a general article that answers a word of the question the reply so far doesn't touch. */
+  private generalFact(c: Ctx, slug: string, already: string): string | undefined {
+    const a = this.bySlug.get(slug);
+    if (!a) return undefined;
+    const ans = this.reader.answer(c.text, { within: [a.id], max: 1, exclude: new Set(c.state.chat.said) });
+    const sentence = ans?.sentences[0];
+    if (!sentence || ans.match < 0.3) return undefined;
+    const have = new Set(terms(already));
+    const found = new Set(terms(sentence.text));
+    if (!terms(c.text).some((t) => !have.has(t) && found.has(t))) return undefined;
+    c.state.sources.push(a);
+    return sentence.text;
   }
 
   private policyReply(c: Ctx, slug: string, topic: string, kind: string): ChatReply {
