@@ -114,6 +114,8 @@ export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestio
                         <p className="text-sm font-medium text-slate-900">{a.title}</p>
                         <Badge tone={CAT[a.category].tone}>{CAT[a.category].label}</Badge>
                         {!a.published && <Badge tone="gray">Hidden</Badge>}
+                        {a.source === 'edited' && <Badge tone="gray">Your wording</Badge>}
+                        {a.source === 'custom' && <Badge tone="gray">Your article</Badge>}
                       </div>
                       <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{a.summary}</p>
                       <p className="mt-1 text-xs text-slate-500">
@@ -257,6 +259,41 @@ function ArticleEditor({ article, onClose, onSaved }: { article: Partial<Article
             <Field label="Price is quoted" hint="e.g. per tooth, per treatment">{(id) => <Input id={id} value={form.priceUnit} onChange={set('priceUnit')} />}</Field>
             <Field label="Typical case value ($)" hint="Internal only: used to score leads.">{(id) => <Input id={id} inputMode="numeric" value={form.caseValue} onChange={set('caseValue')} />}</Field>
           </>
+        )}
+        {article.id && article.source !== 'custom' && (
+          <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-600 sm:col-span-2">
+            <p>
+              {article.source === 'edited'
+                ? 'You reworded this library article, so library updates no longer replace it.'
+                : 'From the LeadFlow library: corrections and new facts arrive automatically. Rewording it keeps your version instead.'}
+              {article.source === 'edited' && (
+                <button
+                  type="button"
+                  className="ml-1 font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800"
+                  onClick={async () => {
+                    if (!confirm('Replace your wording with the current library version?')) return;
+                    const restored = await run(() => api<Article>(`/knowledge/${article.id}/restore`, { method: 'POST' }), 'Library version restored');
+                    if (restored) onSaved(restored);
+                  }}
+                >
+                  Restore the library version
+                </button>
+              )}
+            </p>
+            {!!article.references?.length && (
+              <p className="mt-1.5">
+                Checked against:{' '}
+                {article.references.map((r, i) => (
+                  <span key={r.url}>
+                    {i > 0 && ' · '}
+                    <a className="text-teal-700 underline underline-offset-2 hover:text-teal-800" href={r.url} target="_blank" rel="noreferrer">
+                      {r.name}
+                    </a>
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
         )}
         <div className="flex items-center gap-3 sm:col-span-2">
           <Toggle checked={form.published && !placeholders} disabled={placeholders} onChange={(v) => setForm((f) => ({ ...f, published: v }))} label="Published" />

@@ -35,9 +35,16 @@ export async function uniqueSlug(q: Queryable, base: string): Promise<string> {
   return `${slugify(base)}-${crypto.randomBytes(4).toString('hex')}`;
 }
 
-type ArticleSeed = LibraryArticle & { priceMin?: number | null; priceMax?: number | null };
+export type ArticleSeed = LibraryArticle & { priceMin?: number | null; priceMax?: number | null };
+
+/** Content hash of a library article: changes whenever its wording, tags or sources do. */
+export function libraryVersion(a: LibraryArticle): string {
+  const content = JSON.stringify([a.category, a.title, a.summary, a.body, a.tags, a.service ?? null, a.references ?? []]);
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+}
 
 export async function insertArticles(q: Queryable, orgId: string, articles: ArticleSeed[]): Promise<void> {
+  if (!articles.length) return;
   await q.insert(knowledgeArticles).values(
     articles.map((a) => ({
       orgId,
@@ -54,8 +61,10 @@ export async function insertArticles(q: Queryable, orgId: string, articles: Arti
       priceMax: a.priceMax ?? null,
       published: a.published ?? true,
       source: 'library',
+      references: a.references ?? [],
+      libraryVersion: libraryVersion(a),
     }))
-  );
+  ).onConflictDoNothing();
 }
 
 export interface NewOrganization {

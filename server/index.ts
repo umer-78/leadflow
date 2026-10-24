@@ -9,6 +9,7 @@ import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { connect, runMigrations } from './db/client.ts';
 import { createMailer } from './mailer.ts';
+import { syncLibrary } from './knowledge/sync.ts';
 import { ensureDemo } from './orgs.ts';
 import { startWorker } from './worker.ts';
 
@@ -19,6 +20,10 @@ async function main() {
   const database = connect(config.databaseUrl);
   await runMigrations(database.db);
   if (config.seedDemo) await ensureDemo(database.db);
+  // Corrected and new library articles reach existing clinics (in the background: it never blocks start-up).
+  void syncLibrary(database.db)
+    .then((r) => r.clinics && console.log(`[leadflow] knowledge library: ${r.updated} updated, ${r.added} added, ${r.retired} retired across ${r.clinics} clinic(s)`))
+    .catch((err) => console.error('[leadflow] knowledge library sync failed', err));
 
   const mailer = createMailer(config.email);
   const worker = config.runWorker ? startWorker({ db: database.db, mailer, config }, config.workerIntervalMs) : undefined;

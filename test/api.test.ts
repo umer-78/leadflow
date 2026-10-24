@@ -12,7 +12,8 @@ import pg from 'pg';
 import { createApp } from '../server/app.ts';
 import { loadConfig } from '../server/config.ts';
 import { connect, runMigrations, type Database } from '../server/db/client.ts';
-import { conversations, leads, outboundMessages } from '../server/db/schema.ts';
+import { conversations, knowledgeArticles, leads, organizations, outboundMessages } from '../server/db/schema.ts';
+import { syncLibrary } from '../server/knowledge/sync.ts';
 import type { MailMessage, Mailer } from '../server/mailer.ts';
 import { ensureDemo } from '../server/orgs.ts';
 import { processDue } from '../server/worker.ts';
@@ -242,6 +243,42 @@ describe('API', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the API test
     const implants = (await owner('GET', '/api/knowledge')).body.items.find((a: { slug: string }) => a.slug === 'dental-implants');
     await owner('PATCH', `/api/knowledge/${implants.id}`, { priceMin: 2800, priceMax: 4200 });
     assert.match((await visitor(publicKey).say('how much are dental implants?')).text, /\$2,800–\$4,200/);
+  });
+
+  it('keeps every clinic on the latest library without overwriting its own wording', async () => {
+    const owner = client();
+    await owner('POST', '/api/auth/signup', { clinicName: 'Library Dental', name: 'Lee', email: 'lee@library.test', password: 'password123' });
+    const items = async () => (await owner('GET', '/api/knowledge')).body.items as { id: string; slug: string; summary: string; source: string; references: unknown[] }[];
+    const bySlug = async (slug: string) => (await items()).find((a) => a.slug === slug)!;
+    const [org] = await database.db.select().from(organizations).where(eq(organizations.name, 'Library Dental'));
+    assert.ok((await bySlug('dental-implants')).references.length > 0, 'library articles cite their sources');
+
+    // An outdated copy, a reworded article, a deleted topic and a topic that's new to the library.
+    const stale = await bySlug('fillings');
+    await database.db.update(knowledgeArticles).set({ summary: 'Old wording.', libraryVersion: 'old' }).where(eq(knowledgeArticles.id, stale.id));
+    const crown = await bySlug('dental-crowns');
+    await owner('PATCH', `/api/knowledge/${crown.id}`, { summary: 'Our own crown wording.' });
+    const priced = await bySlug('dental-bridges');
+    await owner('PATCH', `/api/knowledge/${priced.id}`, { ...priced, priceMin: 1500, priceMax: 3000 });
+    const gone = await bySlug('mouthwash');
+    await owner('DELETE', `/api/knowledge/${gone.id}`);
+    const fresh = await bySlug('fluoride');
+    await database.db.delete(knowledgeArticles).where(eq(knowledgeArticles.id, fresh.id));
+
+    await syncLibrary(database.db);
+    assert.notEqual((await bySlug('fillings')).summary, 'Old wording.');
+    assert.equal((await bySlug('dental-crowns')).summary, 'Our own crown wording.');
+    assert.equal((await bySlug('dental-crowns')).source, 'edited');
+    assert.equal((await bySlug('dental-bridges')).source, 'library', 'saving prices keeps the library wording live');
+    assert.equal(await bySlug('mouthwash'), undefined, 'a deleted topic stays deleted');
+    assert.ok(await bySlug('fluoride'), 'a new library topic is added');
+    const [{ priceMin }] = await database.db.select().from(knowledgeArticles).where(and(eq(knowledgeArticles.orgId, org.id), eq(knowledgeArticles.slug, 'dental-bridges')));
+    assert.equal(priceMin, 1500);
+
+    const restored = await owner('POST', `/api/knowledge/${crown.id}/restore`);
+    assert.equal(restored.status, 200);
+    assert.equal(restored.body.source, 'library');
+    assert.notEqual(restored.body.summary, 'Our own crown wording.');
   });
 
   it('validates input', async () => {
