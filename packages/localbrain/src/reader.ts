@@ -32,19 +32,19 @@ export interface AspectRule {
 export const DEFAULT_ASPECTS: AspectRule[] = [
   {
     name: 'longevity',
-    ask: /\bhow long (?:do|does|will|would|can|could|should|did|are|is)\b[^?.!]*?\b(?:last|lasting|stay|hold up|keep|good for)\b|\b(?:last|lasts|lasting) (?:long|forever|for life|a lifetime|for ever)\b|\blong[- ]lasting\b|\bpermanent(?:ly)?\b|\blifespan\b|\bhow many years\b|\bforever\b|\bdurab(?:le|ility)\b|\bwear out\b|\bneed (?:to be )?replac/,
-    answer: /\blast(?:s|ed|ing)?\b(?!\s+(?:visit|resort|step|appointment))|\bdecades\b|\blong-term\b|\blifetime\b|\bpermanent(?:ly)?\b|\byears or (?:more|longer)\b|\bseveral years\b|\b(?:relin|replac)(?:e|ed|ing)\b[^.]*\bevery\b|\bdurab/,
+    ask: /\bhow long (?:do|does|will|would|can|could|should|did|are|is)\b(?!\s+(?:the\s+|my\s+|this\s+|that\s+|it\s+)?(?:swelling|pain|numbness|numb|soreness|sensitivity|bleeding|discomfort|bruising|ache|aching|tenderness|stiffness|sedation|ana?esthe\w*|effects?)\b)[^?.!]*?\b(?:last|lasting|stay|hold up|keep|good for)\b|\b(?:last|lasts|lasting) (?:long|forever|for life|a lifetime|for ever)\b|\blong[- ]lasting\b|\bpermanent(?:ly)?\b|\blifespan\b|\bhow many years\b|\bforever\b|\bdurab(?:le|ility)\b|\bwear out\b|\bneed (?:to be )?replac/,
+    answer: /\blast(?:s|ed|ing)?\b(?!\s+(?:visit|resort|step|appointment))|\bdecades\b|\blong-term\b|\blifetime\b|\bpermanent(?:ly)?\b(?!\s+(?:crowns?|fillings?|restorations?|tooth|teeth|retainers?|veneers?|bridges?|dentures?|molars?|stains?|staining))|\byears or (?:more|longer)\b|\bseveral years\b|\b(?:relin|replac)(?:e|ed|ing)\b[^.]*\bevery\b|\bdurab/,
   },
   {
     name: 'duration',
-    ask: /\bhow long\b(?![^?.!]*\b(?:last|lasting|stay|hold up)\b)|\b(?:healing|recovery|treatment) time\b|\btime (?:to|it takes to) (?:heal|recover)\b|\bhow many (?:visits|appointments|sessions|hours|days|weeks|months|trips)\b|\bhow (?:quick(?:ly)?|fast)\b|\btakes? (?:long|time|a while|ages)\b|\bsame[- ]day\b|\bin (?:one|a single) (?:visit|appointment|day)\b|\btimeline\b|\bhow much time\b|\bwhen will (?:it|they|i) be (?:done|finished|ready)\b/,
+    ask: /\bhow long\b(?![^?.!]*\b(?:last|lasting|stay|hold up)\b)|\bhow long (?:do|does|will|would|can|could|should|did|are|is)\s+(?:the\s+|my\s+|this\s+|that\s+|it\s+)?(?:swelling|pain|numbness|numb|soreness|sensitivity|bleeding|discomfort|bruising|ache|aching|tenderness|stiffness|sedation|ana?esthe\w*|effects?)\b|\b(?:healing|recovery|treatment) time\b|\btime (?:to|it takes to) (?:heal|recover)\b|\bhow many (?:visits|appointments|sessions|hours|days|weeks|months|trips)\b|\bhow (?:quick(?:ly)?|fast)\b|\btakes? (?:long|time|a while|ages)\b|\bsame[- ]day\b|\bin (?:one|a single) (?:visit|appointment|day)\b|\btimeline\b|\bhow much time\b|\bwhen will (?:it|they|i) be (?:done|finished|ready)\b/,
     answer: /\b(?:takes?|taking|took)\b[^.]{0,40}\b(?:minutes?|hours?|days?|weeks?|months?|years?|visits?|appointments?|sessions?)\b|\b(?:completed|done|finished|placed|made|fitted) (?:in|within|on the same)\b|\b\d+(?:\.\d+)? ?(?:to|-|–) ?\d+ (?:minutes|hours|days|weeks|months|years)\b|\b(?<!\bevery\s(?:\w+\s){0,3})(?:\d+|one|two|three|four|five|six|several|a few|a couple of|a single) (?:visits?|appointments?|sessions?|minutes|hours|days|weeks|months)\b|\bsingle visit\b|\bsame day\b|\bone visit\b|\bwhole process\b/,
-    unless: /^(?=[^.]*\blast(?:s|ed|ing)?\b)(?![^.]*\b(?:takes?|visits?|appointments?|sessions?|hours a day)\b)/,
+    unless: /^(?=[^.]*\blast(?:s|ed|ing)?\b)(?![^.]*\b(?:takes?|visits?|appointments?|sessions?|hours a day|numbness|swelling|pain|soreness|sensitivity|bleeding|bruising|stiffness|discomfort)\b)/,
   },
   {
     name: 'pain',
     ask: /\bhurts?\b|\bhurting\b|\bpain(?:ful|less)?\b|\bsore(?:ness)?\b|\bdiscomfort\b|\bache\b|\bnumb(?:ing|ness)?\b|\bana?esthe|\bfeel (?:anything|it|pain)\b|\bsting\b|\b(?:un)?comfortable\b|\bsensitiv/,
-    answer: /\bpain(?:ful|less)?\b|\bhurts?\b|\bdiscomfort\b|\bsore(?:ness)?\b|\btender(?:ness)?\b|\bnumb(?:ing|ness|ed)?\b|\bana?esthe|\bpressure\b|\bcomfortable\b|\bfeels? (?:similar|like)\b|\bsedation\b|\bsensitiv/,
+    answer: /\bpain(?:ful|less)?\b|\bhurts?\b|\bdiscomfort\b|\bsore(?:ness)?\b|\btender(?:ness)?\b|\bnumb(?:ing|ness|ed)?\b|\bana?esthe|\bpressure\b|\bcomfortable\b|\bfeels? (?:similar|like)\b|\bsedation\b|\b(?:de)?sensiti[vsz]/,
   },
   {
     name: 'eating',
@@ -59,7 +59,7 @@ export const DEFAULT_ASPECTS: AspectRule[] = [
   {
     name: 'recovery',
     ask: /\brecover(?:y|ing)?\b|\bheal(?:ing|ed|s)?\b|\bdowntime\b|\btime off\b|\bback to (?:work|school|normal)\b|\bafter (?:the |my |a |an |getting |having )?(?:surgery|procedure|treatment|extraction|removal|operation|it)\b|\bswelling\b|\bbruis/,
-    answer: /\brecover(?:y|ed|ing)?\b|\bheal(?:s|ing|ed)?\b|\bswelling\b|\bbruising\b|\bstiffness\b|\bsettle\b|\bfirst (?:day|24 hours|few days|week)\b|\brest for\b|\bafter(?:wards)? (?:the|placement|surgery|treatment)\b/,
+    answer: /\brecover(?:y|ed|ing)?\b|\bheal(?:s|ing|ed)?\b|\bswelling\b|\bbruising\b|\bstiffness\b|\bsettle\b|\bfirst (?:day|24 hours|few days|week)\b|\brest for\b|\bafter(?:wards)? (?:the (?:procedure|surgery|treatment|extraction|appointment|visit)|placement|surgery|treatment)\b/,
   },
   {
     name: 'safety',
@@ -70,7 +70,7 @@ export const DEFAULT_ASPECTS: AspectRule[] = [
     name: 'candidacy',
     weakAsk: /(?<!what )\bcan (?:i|we|my \w+|he|she|they|adults|kids|children|seniors|anyone|everyone) (?:still )?(?:get|have|use|wear|go)\b/,
     strongAnswer: /\bcan (?:still )?be (?:used|done|performed|treated)\b|\b(?:is|are) (?:considered )?safe\b|\bany age\b|\bage alone\b|\bin (?:their|your) \d0s\b/,
-    ask: /\bcandidates?\b|\bsuitable\b|\beligib|\bqualify\b|\btoo (?:old|young|late)\b|\bam i (?:able|old|young)\b|\bwhat age\b|\bhow old\b|\bstill (?:get|have)\b|\b(?:for|as an?) (?:adults?|seniors?|teens?|teenagers?|older people|grown ups)\b|\bat my age\b|\bwho (?:can|should|is it for|are they for)\b/,
+    ask: /\bcandidates?\b|\bsuitable\b|\beligib|\bqualify\b|\btoo (?:old|young|late)\b|\bam i (?:able|old|young)\b|\bwhat age\b|\bhow old\b|\bstill (?:get|have)\b|(?<!\bwhat \w+(?: \w+)? )\b(?:for|as an?) (?:adults?|seniors?|teens?|teenagers?|older people|grown ups)\b|\bat my age\b|\bwho (?:can|should|is it for|are they for)\b/,
     answer: /\bcan (?:still )?be (?:used|done|performed|treated)\b|\bage alone\b|\bin (?:their|your) \d0s\b|\bolder adults\b|\b(?:is|are) (?:considered )?safe\b|\bcandidates?\b|\bsuit(?:s|able)?\b|\bgood (?:for|choice)\b|\bany age\b|\bages? \d|\badults?\b|\bhealthy (?:teeth|gums)\b|\benough (?:jaw)?bone\b|\bpeople (?:who|missing|with)\b|\bcan (?:correct|treat|replace|fix)\b|\bnot every(?:one)?\b|\bdepends on\b|\braise the risk\b/,
   },
   {
@@ -86,7 +86,7 @@ export const DEFAULT_ASPECTS: AspectRule[] = [
   {
     name: 'frequency',
     ask: /\bhow often\b|\bhow frequently\b|\bevery (?:how|few)\b|\bhow many times\b|\bonce a\b|\btwice a\b/,
-    answer: /\bevery (?:\w+ )?(?:to \w+ )?(?:day|night|week|weeks|month|months|year|years|morning|evening|visit)\b|\btwice a\b|\bonce a\b|\bper (?:day|week|year)\b|\ba (?:day|year)\b|\bregular(?:ly)?\b|\b(?:how|more) often\b/,
+    answer: /\bevery (?:\w+ )?(?:to \w+ )?(?:day|night|week|weeks|month|months|year|years|morning|evening|visit)\b|\btwice a\b|\bonce a\b|\bper (?:day|week|year)\b|\b(?:hours?|minutes?|times) a (?:day|night|week|month|year)\b|\bregular(?:ly)?\b|\b(?:how|more) often\b/,
   },
   {
     name: 'appearance',
@@ -132,6 +132,12 @@ export const DEFAULT_ASPECTS: AspectRule[] = [
     name: 'pregnancy',
     ask: /\bpregnan|\bbreast ?feeding\b|\bexpecting a baby\b/,
     answer: /\bpregnan|\bbreastfeed|\btrimester\b|\bmorning sickness\b/,
+  },
+  {
+    // "How much radiation…?", "how much toothpaste…?": a quantity, not a price.
+    name: 'amount',
+    ask: /\bhow much (?!(?:is|are|was|were|does|do|did|would|will|for|to|it|they|money|roughly|approximately|about|per|more|extra|less|cost|time)\b)[a-z]{4,}\b/,
+    answer: /\b\d+(?:\.\d+)?\s?(?:mSv|mg|ml|%|percent)\b|\b(?:smear|pea-sized|grain of rice)\b|\b(?:very )?low dose\b|\bsmall amount\b|\bless than (?:one|a) day\b/,
   },
   {
     name: 'cost',
@@ -315,7 +321,8 @@ export class Reader<T = unknown> {
     }
     if (!priors.size) return undefined;
 
-    const q = this.index.analyze(question);
+    // "How often…" and "how long…" name the aspect; those words aren't something to find in the answer.
+    const q = this.index.analyze(question.replace(/\bhow (?:often|frequently|long)\b/gi, 'how'));
     const weak = weakAspects(question, this.rules);
     const phrases = q.phrases.map((ph) => ph.map((t) => this.index.canonical(t)));
     const superlative = SUPERLATIVE.test(question);
@@ -336,11 +343,17 @@ export class Reader<T = unknown> {
     }
     const scored: Scored[] = [];
     const asked = new Set(q.weights.keys());
+    // Phrases in the patient's own words (not ones added by synonyms).
+    const saidTerms = new Set(q.original.map((t) => this.index.canonical(t)));
+    const ownPhrases = phrases.filter((ph) => ph.length >= 2 && ph.every((t) => saidTerms.has(t)));
     for (const { doc, prior: base } of priors.values()) {
       const topic = new Set(terms(doc.title ?? ''));
       // An article titled with what was asked ("sensitive teeth") is the best source for it.
       const titled = topic.size ? [...topic].filter((t) => asked.has(t)).length / topic.size : 0;
-      const prior = base + (request.boost?.(doc, aspects) ?? 0) + (titled >= 0.5 ? 0.35 * titled : 0);
+      // ...and so is one whose title holds a phrase the question used ("is a deep cleaning necessary?").
+      const titleSeq = terms(doc.title ?? '').map((t) => this.index.canonical(t));
+      const phrased = ownPhrases.some((ph) => containsNear(titleSeq, ph, 1)) ? 0.3 : 0;
+      const prior = base + (request.boost?.(doc, aspects) ?? 0) + (titled >= 0.5 ? 0.35 * titled : 0) + phrased;
       const summaryLength = summaryLengthOf(doc);
       const docAspects = this.docAspects(doc);
       // The query's own words that the article actually talks about (beyond its title). Words found
@@ -418,8 +431,10 @@ export class Reader<T = unknown> {
     for (const x of own.slice(1)) {
       if (chosen.length >= max) break;
       if (exclude.has(x.s.key)) continue;
+      // A companion answers an asked aspect itself (not just by being in an article that does).
+      const answers = x.s.aspects.some((a) => aspects.includes(a)) || x.s.squarely.some((a) => aspects.includes(a));
       const companion = aspects.length && !(aspects.length === 1 && aspects[0] === 'definition')
-        ? x.aspect > 0 && x.aspect >= best.aspect * 0.7
+        ? answers && x.aspect >= best.aspect * 0.7
         : x.s.index < summary && best.s.index < summary;
       if (companion && within(x) >= within(best) * 0.72 && x.s.text.length < room()) chosen.push(x);
     }
