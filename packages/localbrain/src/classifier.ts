@@ -112,6 +112,11 @@ export class IntentClassifier {
     );
   }
 
+  /** Whether `word` (lower-case) appears in the training examples or keywords. */
+  hasWord(word: string): boolean {
+    return this.vocab.has(word);
+  }
+
   /** Add example phrases to an intent (creating it if needed) and retrain. */
   learn(intent: string, examples: string[]): void {
     const defs = this.defs.map((d) => ({ ...d, examples: [...d.examples] }));
@@ -121,11 +126,15 @@ export class IntentClassifier {
     this.train(defs);
   }
 
-  /** All intents ranked by confidence (highest first). */
-  classify(text: string): IntentScore[] {
+  /**
+   * All intents ranked by confidence (highest first). `isKnown` marks real
+   * words the examples don't contain (e.g. the knowledge base's vocabulary),
+   * so "feel" isn't "corrected" to the keyword "fee".
+   */
+  classify(text: string, options: { isKnown?: (word: string) => boolean } = {}): IntentScore[] {
     const tokens = tokenize(text)
       .filter((t) => !FILLER.has(t))
-      .map((t) => this.vocab.correct(t));
+      .map((t) => (options.isKnown?.(t) ? t : this.vocab.correct(t)));
     if (!tokens.length || !this.examples.length) return [];
     const raw = rawFeatures(tokens);
     const q = this.weigh(raw);

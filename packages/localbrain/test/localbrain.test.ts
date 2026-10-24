@@ -7,9 +7,19 @@ import {
   IntentClassifier,
   SearchIndex,
   Vocabulary,
+  Reader,
   analyzeSentiment,
   analyzeUrgency,
+  answeredAspects,
+  askedAspects,
+  bareName,
+  bareNumber,
   choose,
+  collapseElongation,
+  expandShorthand,
+  followUpSubject,
+  sentences,
+  splitQuestions,
   editDistance,
   extractDate,
   extractEmails,
@@ -242,5 +252,95 @@ describe('Assistant', () => {
       },
     });
     assert.equal((await broken.reply('x', {})).reply.text, 'draft');
+  });
+});
+
+describe('shorthand', () => {
+  it('expands chat-speak and keeps names and emails as typed', () => {
+    assert.equal(expandShorthand('wat r ur hrs'), 'what are your hours');
+    assert.equal(expandShorthand('can i come in tmrw pls'), 'can i come in tomorrow please');
+    assert.equal(expandShorthand("Hi, I'm Ty, ty@x.com"), "Hi, I'm Ty, ty@x.com");
+    assert.equal(expandShorthand('Wat time u close'), 'What time you close');
+  });
+
+  it('collapses elongated words', () => {
+    assert.equal(collapseElongation('sooo'), 'so');
+    assert.equal(collapseElongation('goooood'), 'good');
+    assert.equal(collapseElongation('pleeease'), 'please');
+  });
+});
+
+describe('dialogue', () => {
+  it('splits a message into separate questions only when each part is one', () => {
+    assert.deepEqual(splitQuestions('How much are veneers and do you offer payment plans?'), [
+      'How much are veneers',
+      'do you offer payment plans?',
+    ]);
+    assert.deepEqual(splitQuestions('Do you take Aetna? Also, are you open Saturdays?'), ['Do you take Aetna?', 'are you open Saturdays?']);
+    assert.deepEqual(splitQuestions("I'm Maria. How much are veneers?"), ["I'm Maria. How much are veneers?"]);
+    assert.deepEqual(splitQuestions("what's the difference between veneers and bonding"), ["what's the difference between veneers and bonding"]);
+  });
+
+  it('finds the new subject of an elliptical follow-up', () => {
+    assert.equal(followUpSubject('what about veneers?'), 'veneers');
+    assert.equal(followUpSubject('and for kids?'), 'kids');
+    assert.equal(followUpSubject('veneers too?'), 'veneers');
+    assert.equal(followUpSubject('and how long does it take?'), undefined);
+  });
+
+  it('spots bare choice numbers', () => {
+    assert.equal(bareNumber('2'), 2);
+    assert.equal(bareNumber('the first one'), 1);
+    assert.equal(bareNumber('option three'), 3);
+    assert.equal(bareNumber('555-201-3344'), undefined);
+  });
+
+  it('recognises a message that is just a name', () => {
+    const known = (w: string) => ['implants', 'thanks'].includes(w);
+    assert.equal(bareName('Sarah Connor', known), 'Sarah Connor');
+    assert.equal(bareName('Implants', known), undefined);
+    assert.equal(bareName('sam', known), undefined);
+    assert.equal(bareName('sam', known, true), 'Sam');
+    assert.equal(bareName('Cool', known), undefined);
+  });
+
+  it('does not take "on its own" for a name', () => {
+    assert.equal(extractName('can a cracked tooth heal on its own'), undefined);
+    assert.equal(extractName("Hi, it's Dana here"), 'Dana');
+  });
+});
+
+describe('Reader', () => {
+  const index = new SearchIndex<string>({ synonyms: [['hurt', 'pain', 'sore']], equivalents: [['tooth', 'teeth']] });
+  index.add({
+    id: 'veneers',
+    title: 'Porcelain veneers',
+    body: 'Porcelain veneers are thin shells bonded to the front of the teeth.\nTreatment usually takes two or three visits over a few weeks.\nWith good care, veneers commonly last 10 to 15 years.\nThe teeth may feel a little sore for a few days.',
+  });
+  index.add({
+    id: 'whitening',
+    title: 'Teeth whitening',
+    body: 'Whitening lightens natural enamel with a peroxide gel.\nIn-office whitening takes about an hour.\nResults last from several months to a few years.',
+  });
+  const reader = new Reader(index);
+
+  it('tells "how long does it take" from "how long does it last"', () => {
+    assert.deepEqual(askedAspects('how long do veneers take'), ['duration']);
+    assert.deepEqual(askedAspects('how long do veneers last'), ['longevity']);
+    assert.ok(answeredAspects('Results last from several months to a few years.').includes('longevity'));
+    assert.match(reader.answer('how long do veneers take')!.sentences[0].text, /two or three visits/);
+    assert.match(reader.answer('how long do veneers last')!.sentences[0].text, /10 to 15 years/);
+    assert.match(reader.answer('how long does whitening last')!.sentences[0].text, /several months/);
+  });
+
+  it('answers the aspect asked and skips what was already said', () => {
+    const first = reader.answer('do veneers hurt?')!;
+    assert.match(first.sentences[0].text, /sore/);
+    const again = reader.answer('do veneers hurt?', { exclude: new Set(first.sentences.map((s) => s.key)) })!;
+    assert.equal(again.repeated, true);
+  });
+
+  it('keeps abbreviations inside one sentence', () => {
+    assert.deepEqual(sentences('Our team is led by Dr. Patel. She is great.'), ['Our team is led by Dr. Patel.', 'She is great.']);
   });
 });

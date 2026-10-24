@@ -85,7 +85,11 @@ export class Vocabulary {
     let best = word;
     let bestScore = Number.POSITIVE_INFINITY;
     for (let len = word.length - budget; len <= word.length + budget; len++) {
+      // Very short words ("fee", "gum") are too easy to reach by accident.
+      if (len < 4) continue;
       for (const cand of this.byLength.get(len) ?? []) {
+        // Short words keep their first letter ("xrays" is not "trays").
+        if (word.length <= 5 && cand[0] !== word[0]) continue;
         const d = editDistance(word, cand, budget);
         if (d > budget) continue;
         // Prefer fewer edits, then a matching first letter, then common words.

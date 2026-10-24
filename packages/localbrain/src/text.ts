@@ -34,7 +34,8 @@ export const STOPWORDS: ReadonlySet<string> = new Set(
     'under until up very was we were what when where which while who whom why will with would you your ' +
     'yours yourself yourselves im ive id youre dont doesnt didnt cant wont isnt arent wasnt also get got ' +
     'please hi hello hey thanks thank want wanted like would know tell let us interested wondering looking info ' +
-    'information question questions asking considering thinking curious u ur r ya pls plz thx'
+    'information question questions asking considering thinking curious u ur r ya pls plz thx ' +
+    'really actually basically honestly literally totally kinda sorta guys'
   ).split(' ')
 );
 
@@ -139,18 +140,31 @@ export interface TermOptions {
 export function terms(text: string, options: TermOptions = {}): string[] {
   const { removeStopwords = true, stem: doStem = true } = options;
   const out: string[] = [];
-  for (const t of tokenize(text)) {
+  for (const raw of tokenize(text)) {
+    // "70s" is about 70; "1990s" about 1990.
+    const t = /^\d+s$/.test(raw) ? raw.slice(0, -1) : raw;
     if (removeStopwords && STOPWORDS.has(t)) continue;
     out.push(doStem ? stem(t) : t);
   }
   return out;
 }
 
+/** Abbreviations whose full stop doesn't end a sentence ("Dr. Patel", "e.g. bonding"). */
+const ABBREVIATIONS = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|ave|rd|blvd|ste|no|vs|approx|dept|est|inc|ltd|co|jr|sr|e\.g|i\.e|etc|a\.m|p\.m)\.$/i;
+
 /** Split prose into sentences (also treats list items / line breaks as boundaries). */
 export function sentences(text: string): string[] {
   return text
     .split(/\n+/)
-    .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z0-9"(])/))
+    .flatMap((line) => {
+      const parts = line.split(/(?<=[.!?])\s+(?=[A-Z0-9"(])/);
+      const out: string[] = [];
+      for (const part of parts) {
+        if (out.length && ABBREVIATIONS.test(out[out.length - 1])) out[out.length - 1] += ` ${part}`;
+        else out.push(part);
+      }
+      return out;
+    })
     .map((s) => s.replace(/^[-*•\d.)\s]+(?=[A-Za-z])/, '').trim())
     .filter((s) => s.length > 1);
 }
