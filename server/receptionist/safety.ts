@@ -45,7 +45,7 @@ const PAIN = /\b(toothache|tooth ache|pain|painful|hurts?|hurting|aching|aches|a
 const FIRST_PERSON = /\b(my|i|im|ive|me|mine)\b/;
 const MOUTH = /\b(tooth|teeth|molar|molars|jaw|gum|gums|mouth|wisdom)\b/;
 const INTENSE =
-  /\b(severe|severely|unbearable|excruciating|terrible|horrible|really bad|so bad|so much|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|could not sleep|couldnt sleep|all night|cant eat|cannot eat|agony|crying)\b/;
+  /\b(severe|severely|unbearable|excruciating|terrible|terribly|horrible|awful|really bad|so bad|so much|really hurts?|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|could not sleep|couldnt sleep|all night|cant eat|cannot eat|agony|crying|like hell|cant take it|cannot take it)\b/;
 
 const RULES: Rule[] = [
   // ---- possible medical emergencies
@@ -96,7 +96,7 @@ const RULES: Rule[] = [
     topic: 'knocked-out-tooth',
     reason: 'Knocked-out tooth',
     test: (t) =>
-      (/\bknock\w*\s+(out|loose)\b|\b(tooth|teeth)\b[^.?!]{0,25}\b(fell|fall|came|come|got knocked|popped)\s+out\b|\bavuls\w*/.test(t) ||
+      (/\bknock\w*\s+(out|loose)\b|\b(tooth|teeth)\b[^.?!]{0,25}\b(fell|came|got knocked|was knocked|popped|just came)\s+out\b|\bavuls\w*/.test(t) ||
         /\b(knock\w*|smash\w*|hit)\b[^.?!]{0,20}\b(tooth|teeth)\b[^.?!]{0,12}\bout\b/.test(t)) &&
       !/\bbaby tooth|baby teeth|milk tooth|wiggly|was loose|loose baby\b/.test(t),
   },
@@ -127,16 +127,48 @@ const RULES: Rule[] = [
   },
   {
     level: 'SOON',
+    topic: 'knocked-out-tooth',
+    reason: 'Knocked-out baby tooth',
+    advice: "Don't try to put a knocked-out baby tooth back in. Keep your child calm, press a clean cloth on any bleeding, and have the dentist check the area soon.",
+    // A baby tooth that simply falls out is normal; one knocked out in an accident needs a check.
+    test: (t) => /\b(knock\w*|hit|smash\w*|bang\w*)\b[^.?!]{0,30}\b(baby tooth|baby teeth|milk tooth)\b|\b(baby tooth|baby teeth|milk tooth)\b[^.?!]{0,20}\b(knocked|smashed) out\b/.test(t),
+  },
+  {
+    level: 'SOON',
     topic: 'lost-filling-or-crown',
     reason: 'Lost filling or crown',
-    test: has(/\b(lost|fell out|came out|came off|fell off|popped off|popped out|broke off)\b[^.?!]{0,20}\b(filling|crown|cap|bridge|temporary)\b|\b(filling|crown|cap|bridge|temporary)\b[^.?!]{0,20}\b(fell out|came out|came off|fell off|popped (off|out)|is loose|broke off)\b/),
+    test: has(/\b(lost|fell out|came out|came off|fell off|popped off|popped out|broke off)\b[^.?!]{0,20}\b(filling|crown|cap|bridge|temporary)\b|\b(filling|crown|cap|bridge|temporary)\b[^.?!]{0,20}\b(fell out|came out|came off|fell off|popped (off|out)|(is|feels?|seems?|got|getting) loose|broke off)\b/),
+  },
+  {
+    level: 'SOON',
+    topic: 'mouth-injuries',
+    reason: 'Bitten or cut tongue, lip or cheek',
+    test: has(/\b(bit|bitten|cut|split|tore|torn)\b[^.?!]{0,20}\b(tongue|lip|lips|cheek)\b/),
+  },
+  {
+    level: 'SOON',
+    topic: 'dental-abscess',
+    reason: 'Bump or swelling on the gum',
+    advice: 'A pimple-like bump or boil on the gum can be a sign of infection, so it should be checked soon. Rinsing with warm salt water can ease discomfort until you are seen.',
+    test: has(/\b(bump|pimple|boil|lump|blister)\b[^.?!]{0,25}\b(gum|gums)\b|\b(gum|gums)\b[^.?!]{0,15}\b(bump|pimple|boil|lump)\b/),
+  },
+  {
+    level: 'SOON',
+    topic: 'gum-disease',
+    reason: 'Loose adult tooth',
+    advice: 'An adult tooth that feels loose can be a sign of gum disease or an injury, so it is best to have it checked soon. Until then, chew on the other side and brush gently.',
+    test: (t) =>
+      /\b(tooth|teeth|molar)\b[^.?!]{0,15}\b(feels?|is|are|getting|seems?|feel) (loose|wobbly)\b|\b(loose|wobbly) (tooth|teeth)\b/.test(t) &&
+      !/\b(baby|kid|child|son|daughter|toddler|milk)\b/.test(t),
   },
   {
     level: 'SOON',
     topic: 'severe-toothache',
     reason: 'Tooth pain',
+    // Twinges with cold or sweet things are sensitivity, answered from the knowledge base.
     test: (t) =>
-      PAIN.test(t) && FIRST_PERSON.test(t) && (MOUTH.test(t) || /toothache/.test(t)) && !PROCEDURE_QUESTION.test(t),
+      PAIN.test(t) && FIRST_PERSON.test(t) && (MOUTH.test(t) || /toothache/.test(t)) && !PROCEDURE_QUESTION.test(t) &&
+      !(/\b(cold|hot|sweet|sensitive|ice|ice cream)\b/.test(t) && !INTENSE.test(t)),
   },
 ];
 
@@ -151,7 +183,7 @@ const DIAGNOSIS =
   /\b(do i (have|need)\s+(a |an )?(cavity|cavities|root canal|filling|crown|infection|abscess|gum disease|periodontitis|gingivitis|extraction|antibiotics|surgery|cancer|tmj|dry socket|wisdom teeth (removed|out)))\b|\bis (it|this|that|my \w+) (infected|an infection|normal|serious|broken|cracked|a cavity|cancer\w*|gum disease|an abscess|dry socket|bad)\b|\b(whats|what is) wrong with (my|me)\b|\bcould (it|this|that) be\b|\bdiagnos\w*\b|\bshould i be (worried|concerned)\b|\bwhat (is|could) (this|that) (bump|spot|lump|white patch|patch)\b/;
 
 const MEDICATION =
-  /\b(what|which|how much|how many|can i take|should i take|is it ok to take|is it safe to take|safe to take|recommend)\b[^.?!]{0,40}\b(antibiotic\w*|ibuprofen|advil|motrin|tylenol|acetaminophen|paracetamol|aspirin|painkillers?|pain killers?|pain relief|medicine|medication|meds|amoxicillin|penicillin|mg|dose|dosage|pills?)\b/;
+  /\b(what|which|how much|how many|can i take|should i take|is it ok to take|is it safe to take|safe to take|recommend|do i need|do i have to take)\b[^.?!]{0,40}\b(antibiotic\w*|ibuprofen|advil|motrin|tylenol|acetaminophen|paracetamol|aspirin|painkillers?|pain killers?|pain relief|medicine|medication|meds|amoxicillin|penicillin|mg|dose|dosage|pills?)\b/;
 
 const MEDICATION_FOR_SYMPTOM =
   /\b(what|which)\b[^.?!]{0,20}\b(take|use|give|have)\b[^.?!]{0,20}\b(for|with)\b[^.?!]{0,15}\b(pain|ache|aching|swelling|infection|toothache|sensitivity)\b/;
@@ -161,6 +193,10 @@ export function isMedicationQuestion(text: string): boolean {
   return MEDICATION.test(t) || MEDICATION_FOR_SYMPTOM.test(t);
 }
 
+/** "Do I need a crown after a root canal?" asks how a treatment usually goes, not about the visitor's own tooth. */
+const GENERAL_SEQUENCE = /\bdo (i|you) (need|have to (get|have)) (a |an )?\w+( \w+)? (after|before|with) (a|an|my|the|getting|having)\b/;
+
 export function isDiagnosisRequest(text: string): boolean {
-  return DIAGNOSIS.test(clean(text));
+  const t = clean(text);
+  return DIAGNOSIS.test(t) && !GENERAL_SEQUENCE.test(t);
 }

@@ -171,6 +171,8 @@ export interface SlotQuery {
   /** Preferred clinic-local time HH:MM. */
   time?: string;
   relation?: 'at' | 'after' | 'before';
+  /** Only times strictly after this instant (ISO), e.g. "later than the ones offered". */
+  after?: string;
   limit?: number;
   horizonDays?: number;
 }
@@ -188,7 +190,7 @@ const PART_RANGES: Record<PartOfDay, [number, number]> = {
 export function findSlots(q: SlotQuery): Date[] {
   const limit = q.limit ?? 3;
   const horizon = q.horizonDays ?? 21;
-  const earliest = q.now.getTime() + q.minNoticeHours * 3_600_000;
+  const earliest = Math.max(q.now.getTime() + q.minNoticeHours * 3_600_000, q.after ? new Date(q.after).getTime() + 1 : 0);
   const today = utcToZoned(q.now, q.tz).date;
   const start = q.date && q.date > today ? q.date : today;
   const candidates: { at: Date; date: string; minutes: number }[] = [];
