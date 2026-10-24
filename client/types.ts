@@ -112,7 +112,9 @@ export interface Article {
   priceUnit: string | null;
   caseValue: number | null;
   published: boolean;
-  source: string;
+  /** library: kept up to date automatically; edited: a library article the clinic reworded; custom: the clinic's own. */
+  source: 'library' | 'edited' | 'custom';
+  references: { name: string; url: string }[];
   updatedAt: string;
 }
 

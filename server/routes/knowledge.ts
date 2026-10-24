@@ -11,9 +11,12 @@ import { HttpError, body, bool, int, nullableStr, oneOf, route, str, uuidParam }
 import type { ArticleCategory } from '../knowledge/library.ts';
 import { logActivity } from '../leads.ts';
 import { slugify } from '../orgs.ts';
+import { libraryContent, libraryFor } from '../knowledge/sync.ts';
 import { newChatState, type ChatState } from '../receptionist/engine.ts';
 
 const CATEGORIES: ArticleCategory[] = ['PROCEDURE', 'CONDITION', 'EMERGENCY', 'AFTERCARE', 'FAQ', 'POLICY'];
+/** The wording of an article (its prices, case value and publishing are the clinic's settings). */
+const CONTENT = ['title', 'summary', 'body', 'category', 'tags', 'service'] as const;
 
 function tagsOf(v: unknown): string[] | undefined {
   if (v === undefined) return undefined;
@@ -116,6 +119,10 @@ export function knowledgeRoutes(deps: AppDeps): Router {
       if (min !== null && max !== null && min > max) throw new HttpError(400, 'The minimum price is higher than the maximum.');
       const published = bool(b, 'published');
       if (published !== undefined) patch.published = published;
+      // Rewording a library article keeps the clinic's version: library updates no longer replace it.
+      if (current.source === 'library' && CONTENT.some((k) => k in patch && JSON.stringify(patch[k]) !== JSON.stringify(current[k]))) {
+        patch.source = 'edited';
+      }
       const [updated] = await db
         .update(knowledgeArticles)
         .set({ ...patch, updatedAt: new Date() })
@@ -135,10 +142,36 @@ export function knowledgeRoutes(deps: AppDeps): Router {
       const deleted = await db
         .delete(knowledgeArticles)
         .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.orgId, org.id)))
-        .returning({ id: knowledgeArticles.id, title: knowledgeArticles.title });
+        .returning({ id: knowledgeArticles.id, title: knowledgeArticles.title, slug: knowledgeArticles.slug });
       if (!deleted.length) throw new HttpError(404, 'Article not found.');
-      await logActivity(db, org.id, 'KNOWLEDGE_DELETED', 'KNOWLEDGE', id, { title: deleted[0].title }, req.auth!.user.id);
+      // The slug is kept so library updates don't bring a deleted topic back.
+      await logActivity(db, org.id, 'KNOWLEDGE_DELETED', 'KNOWLEDGE', id, { title: deleted[0].title, slug: deleted[0].slug }, req.auth!.user.id);
       res.json({ ok: true });
+    })
+  );
+
+  /** Put a reworded library article back to the current library version (and keep it updated again). */
+  r.post(
+    '/:id/restore',
+    requireRole('ADMIN'),
+    route(async (req, res) => {
+      const org = req.auth!.org;
+      const id = uuidParam(req);
+      const [current] = await db
+        .select()
+        .from(knowledgeArticles)
+        .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.orgId, org.id)))
+        .limit(1);
+      if (!current) throw new HttpError(404, 'Article not found.');
+      const original = libraryFor(org.isDemo).find((a) => a.slug === current.slug);
+      if (current.source === 'custom' || !original) throw new HttpError(400, 'This article is not from the library.');
+      const [restored] = await db
+        .update(knowledgeArticles)
+        .set({ ...libraryContent(original, org.isDemo), source: 'library', updatedAt: new Date() })
+        .where(eq(knowledgeArticles.id, id))
+        .returning();
+      await logActivity(db, org.id, 'KNOWLEDGE_UPDATED', 'KNOWLEDGE', id, { restored: true }, req.auth!.user.id);
+      res.json(restored);
     })
   );
 

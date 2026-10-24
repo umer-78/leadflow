@@ -96,7 +96,12 @@ export const knowledgeArticles = pgTable(
     priceUnit: text('price_unit'),
     caseValue: integer('case_value'),
     published: boolean('published').notNull().default(true),
+    /** library (kept up to date from the built-in library), edited (a library article the clinic rewrote) or custom. */
     source: text('source').notNull().default('library'),
+    /** Where the facts come from, shown to the clinic. */
+    references: jsonb('references').$type<{ name: string; url: string }[]>().notNull().default([]),
+    /** Content hash of the library version this row holds (library articles only). */
+    libraryVersion: text('library_version'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
