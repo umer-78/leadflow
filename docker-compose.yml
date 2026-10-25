@@ -1,0 +1,15 @@
+# Local development database: `docker compose up -d`, then `npm run dev`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: leadflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - leadflow-db:/var/lib/postgresql/data
+
+volumes:
+  leadflow-db:
