@@ -12,6 +12,7 @@ import type { ArticleCategory } from '../knowledge/library.ts';
 import { logActivity } from '../leads.ts';
 import { slugify } from '../orgs.ts';
 import { libraryContent, libraryFor } from '../knowledge/sync.ts';
+import { ImportError, analyzeSite, crawlSite, fetchPublicPage } from '../knowledge/importer.ts';
 import { newChatState, type ChatState } from '../receptionist/engine.ts';
 
 const CATEGORIES: ArticleCategory[] = ['PROCEDURE', 'CONDITION', 'EMERGENCY', 'AFTERCARE', 'FAQ', 'POLICY'];
@@ -25,10 +26,43 @@ function tagsOf(v: unknown): string[] | undefined {
   return [...new Set(list.map((t) => String(t).trim().toLowerCase()).filter(Boolean))].slice(0, 40);
 }
 
+/** Website imports in progress, and recent ones per clinic (each reads up to 15 pages of someone's website). */
+const importing = new Set<string>();
+const recentImports = new Map<string, number[]>();
+const IMPORTS_PER_HOUR = 10;
+
 export function knowledgeRoutes(deps: AppDeps): Router {
   const { db } = deps;
   const r = Router();
   r.use(requireAuth(db));
+
+  /** Read the clinic's own website and suggest prices, policy wording, FAQs and contact details to review. */
+  r.post(
+    '/import',
+    requireRole('ADMIN'),
+    route(async (req, res) => {
+      const org = req.auth!.org;
+      const url = str(body(req), 'url', { required: true, max: 500 })!;
+      const now = Date.now();
+      const recent = (recentImports.get(org.id) ?? []).filter((t) => now - t < 3_600_000);
+      if (importing.has(org.id)) throw new HttpError(429, 'A website import is already running for this clinic.');
+      if (recent.length >= IMPORTS_PER_HOUR) throw new HttpError(429, 'That is a lot of imports in one hour. Please try again a little later.');
+      recentImports.set(org.id, [...recent, now]);
+      importing.add(org.id);
+      try {
+        const crawl = await crawlSite(url, deps.fetchPage ?? fetchPublicPage);
+        const articles = await db.select().from(knowledgeArticles).where(eq(knowledgeArticles.orgId, org.id));
+        const suggestions = analyzeSite(crawl, articles);
+        await logActivity(db, org.id, 'KNOWLEDGE_IMPORT_SCANNED', 'KNOWLEDGE', null, { site: suggestions.site, pages: crawl.pages.length }, req.auth!.user.id);
+        res.json(suggestions);
+      } catch (err) {
+        if (err instanceof ImportError) throw new HttpError(422, err.message);
+        throw err;
+      } finally {
+        importing.delete(org.id);
+      }
+    })
+  );
 
   r.get(
     '/',

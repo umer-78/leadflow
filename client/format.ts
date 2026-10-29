@@ -46,6 +46,6 @@ export function phone(p: string | null | undefined): string {
 export const titleCase = (s: string) => s.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export function priceRange(min: number | null, max: number | null, unit?: string | null): string {
-  const r = min != null && max != null ? `${money(min)}–${money(max)}` : min != null ? `from ${money(min)}` : max != null ? `up to ${money(max)}` : '';
+  const r = min != null && max != null ? (min === max ? money(min) : `${money(min)}–${money(max)}`) : min != null ? `from ${money(min)}` : max != null ? `up to ${money(max)}` : '';
   return r ? `${r}${unit ? ` ${unit}` : ''}` : '';
 }
