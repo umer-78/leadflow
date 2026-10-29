@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
 import { errorHandler, route } from './http.ts';
+import type { PageFetcher } from './knowledge/importer.ts';
 import type { Mailer } from './mailer.ts';
 import { authRoutes } from './routes/auth.ts';
 import { billingRoutes } from './routes/billing.ts';
@@ -21,6 +22,8 @@ export interface AppDeps {
   mailer: Mailer;
   /** Ask the background worker to send queued email now. */
   kick?: () => void;
+  /** How website pages are fetched for "Import from your website" (tests use a fake website). */
+  fetchPage?: PageFetcher;
 }
 
 export function createApp(deps: AppDeps): express.Express {
