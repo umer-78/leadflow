@@ -14,6 +14,7 @@ import { loadConfig } from '../server/config.ts';
 import { connect, runMigrations, type Database } from '../server/db/client.ts';
 import { conversations, knowledgeArticles, leads, organizations, outboundMessages } from '../server/db/schema.ts';
 import { syncLibrary } from '../server/knowledge/sync.ts';
+import { fakeSite } from './fixtures/clinic-site.ts';
 import type { MailMessage, Mailer } from '../server/mailer.ts';
 import { ensureDemo } from '../server/orgs.ts';
 import { processDue } from '../server/worker.ts';
@@ -86,7 +87,7 @@ describe('API', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the API test
     database = connect(url.toString());
     await runMigrations(database.db);
     await ensureDemo(database.db);
-    server = createApp({ db: database.db, config, mailer }).listen(0);
+    server = createApp({ db: database.db, config, mailer, fetchPage: fakeSite() }).listen(0);
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
 
@@ -279,6 +280,27 @@ describe('API', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the API test
     assert.equal(restored.status, 200);
     assert.equal(restored.body.source, 'library');
     assert.notEqual(restored.body.summary, 'Our own crown wording.');
+  });
+
+  it("suggests prices, policy drafts and FAQs from the clinic's own website, for admins", async () => {
+    const owner = client();
+    await owner('POST', '/api/auth/signup', { clinicName: 'Import Dental', name: 'Ida', email: 'ida@import.test', password: 'password123' });
+    const r = await owner('POST', '/api/knowledge/import', { url: 'https://www.smilestudio.example' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.ok(r.body.prices.some((p: { title: string; priceMin: number }) => p.title === 'Porcelain veneers' && p.priceMin === 1100));
+    assert.ok(r.body.policies.some((p: { slug: string }) => p.slug === 'insurance'));
+    assert.ok(r.body.faqs.length >= 3);
+    assert.equal(r.body.contact.phone, '+15552223333');
+    // Suggestions only: nothing changed until the clinic applies them.
+    const veneers = (await owner('GET', '/api/knowledge')).body.items.find((a: { slug: string }) => a.slug === 'porcelain-veneers');
+    assert.equal(veneers.priceMin, null);
+
+    assert.equal((await owner('POST', '/api/knowledge/import', { url: 'http://127.0.0.1/admin' })).status, 422);
+    assert.equal((await owner('POST', '/api/knowledge/import', { url: 'http://169.254.169.254/' })).status, 422);
+    await owner('POST', '/api/team', { name: 'Sam Staff', email: 'sam@import.test', password: 'staff-pass-1', role: 'STAFF' });
+    const staff = client();
+    await staff('POST', '/api/auth/login', { email: 'sam@import.test', password: 'staff-pass-1' });
+    assert.equal((await staff('POST', '/api/knowledge/import', { url: 'https://www.smilestudio.example' })).status, 403);
   });
 
   it('validates input', async () => {
