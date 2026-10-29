@@ -1,4 +1,4 @@
-import { BookOpen, Pencil, Plus, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
+import { BookOpen, Globe, Pencil, Plus, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { PageProps } from '../App.tsx';
 import { api, useApi } from '../api.ts';
@@ -6,6 +6,7 @@ import { priceRange, timeAgo } from '../format.ts';
 import { navigate } from '../router.ts';
 import type { Article, Category, MessageMeta } from '../types.ts';
 import { Badge, Button, Card, EmptyState, ErrorNote, Field, Input, Loading, Modal, PageHeader, Select, Textarea, Toggle, cx, useAction, type Tone } from '../ui.tsx';
+import { ImportWebsite } from './ImportWebsite.tsx';
 
 const CATEGORIES: { key: Category; label: string; tone: Tone }[] = [
   { key: 'PROCEDURE', label: 'Treatments', tone: 'teal' },
@@ -23,6 +24,7 @@ export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestio
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Category | ''>('');
   const [editing, setEditing] = useState<Partial<Article> | null>(null);
+  const [importing, setImporting] = useState(false);
   const { run } = useAction();
   const admin = can('ADMIN');
 
@@ -60,9 +62,14 @@ export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestio
         subtitle="Everything the assistant knows. It answers only from published articles and quotes only the prices you set here."
         actions={
           admin && (
-            <Button variant="primary" onClick={() => setEditing({ category: 'FAQ', title: '', summary: '', body: '', tags: [], published: true })}>
-              <Plus size={16} /> New article
-            </Button>
+            <>
+              <Button onClick={() => setImporting(true)}>
+                <Globe size={16} /> Import from website
+              </Button>
+              <Button variant="primary" onClick={() => setEditing({ category: 'FAQ', title: '', summary: '', body: '', tags: [], published: true })}>
+                <Plus size={16} /> New article
+              </Button>
+            </>
           )
         }
       />
@@ -140,6 +147,16 @@ export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestio
         </div>
         <TestAssistant />
       </div>
+
+      {importing && (
+        <ImportWebsite
+          onClose={() => setImporting(false)}
+          onDone={() => {
+            setImporting(false);
+            list.reload();
+          }}
+        />
+      )}
 
       {editing && (
         <ArticleEditor

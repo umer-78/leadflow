@@ -1377,7 +1377,9 @@ export class Receptionist {
     if (!a) return undefined;
     const range =
       a.priceMin != null && a.priceMax != null
-        ? `${money(a.priceMin)}–${money(a.priceMax)}`
+        ? a.priceMin === a.priceMax
+          ? money(a.priceMin)
+          : `${money(a.priceMin)}–${money(a.priceMax)}`
         : a.priceMin != null
           ? `from ${money(a.priceMin)}`
           : a.priceMax != null
