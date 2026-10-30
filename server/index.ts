@@ -32,7 +32,7 @@ async function main() {
   if (config.env === 'production') {
     const dist = path.join(root, 'dist');
     app.use(express.static(dist, { index: false, maxAge: '1h' }));
-    app.get(/^\/(?!api\/|u\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+    app.get(/^\/(?!api\/|u\/|a\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
   } else {
     const { createServer } = await import('vite');
     const vite = await createServer({ root, server: { middlewareMode: true }, appType: 'spa' });

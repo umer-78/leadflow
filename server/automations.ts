@@ -185,6 +185,8 @@ export async function onAppointmentChange(q: Queryable, org: Organization, befor
   switch (after.status) {
     case 'REQUESTED':
     case 'CONFIRMED':
+      // Reopened (a mistaken "completed" or "no-show"): what that queued no longer applies.
+      if (before.status !== after.status) await skipFor(q, after.id, ['NO_SHOW', 'REVIEW', 'RECALL'], 'Appointment reopened');
       if (moved || ['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(before.status)) await scheduleReminders(q, org, after, lead, now);
       return;
     case 'CANCELLED':
@@ -194,12 +196,12 @@ export async function onAppointmentChange(q: Queryable, org: Organization, befor
       }
       return;
     case 'NO_SHOW':
-      await skipFor(q, after.id, ['REMINDER', 'REVIEW', 'RECALL'], 'Marked as a no-show');
+      await skipFor(q, after.id, ['REMINDER', 'NO_SHOW', 'REVIEW', 'RECALL'], 'Marked as a no-show');
       // An hour's grace, so a mistaken click can be undone before the email goes.
       if (settings.noShow.enabled && canEmail(lead)) await queue('NO_SHOW', new Date(now.getTime() + 3_600_000), 'We missed you');
       return;
     case 'COMPLETED':
-      await skipFor(q, after.id, ['REMINDER', 'NO_SHOW'], 'Visit completed');
+      await skipFor(q, after.id, ['REMINDER', 'NO_SHOW', 'REVIEW', 'RECALL'], 'Visit completed');
       if (!canEmail(lead)) return;
       if (settings.reviews.enabled) await queue('REVIEW', new Date(now.getTime() + settings.reviews.delayHours * 3_600_000), 'Review request');
       if (settings.recall.enabled) {
@@ -478,7 +480,7 @@ export async function buildDigest(db: DB, org: Organization, now: Date, publicUr
   return { email, step: Number(today.replace(/-/g, '')), quiet };
 }
 
-/** Each clinic's morning digest, once per clinic day, after the chosen hour. */
+/** Each clinic's morning digest, once per clinic day, in the six hours after the chosen time. */
 export async function queueDigests(db: DB, now: Date, publicUrl?: string): Promise<number> {
   let queued = 0;
   for (const org of await db.select().from(organizations)) {
@@ -486,7 +488,9 @@ export async function queueDigests(db: DB, now: Date, publicUrl?: string): Promi
     const to = org.notificationEmail ?? org.email;
     if (!settings.enabled || !to) continue;
     const local = utcToZoned(now, org.timezone);
-    if (Number(local.time.slice(0, 2)) < settings.hour) continue;
+    const hour = Number(local.time.slice(0, 2));
+    // A server that was down all morning doesn't send a "morning" digest at 11 PM.
+    if (hour < settings.hour || hour >= settings.hour + 6) continue;
     const step = Number(local.date.replace(/-/g, ''));
     const [already] = await db
       .select({ id: outboundMessages.id })
