@@ -206,7 +206,7 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
     await processDue(deps(), new Date(Date.now() + 3 * HOUR));
     const [reviewMail] = mailTo('vic@example.com');
     assert.match(reviewMail.subject, /How was your visit/);
-    assert.ok(reviewMail.text.includes('https://g.page/r/reminder-dental/review'));
+    assert.match(reviewMail.text, /https:\/\/g\.page\/r\/reminder-dental\/review/);
 
     await processDue(deps(), new Date(recall.scheduledFor.getTime() + 60_000));
     const recallMail = mailTo('vic@example.com').find((m) => /check-up/.test(m.subject));
@@ -265,7 +265,12 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
     const nineTomorrow = new Date(zonedToUtc(today, '09:00', org.timezone).getTime() + 24 * HOUR);
     assert.equal((await runSweeps(deps(), nineTomorrow)).digests, 1);
     assert.equal((await runSweeps(deps(), new Date(nineTomorrow.getTime() + HOUR))).digests, 0);
-    const [digest] = await db.select().from(outboundMessages).where(and(eq(outboundMessages.orgId, orgId), eq(outboundMessages.kind, 'DIGEST')));
+    // (A sweep earlier in the day may also have queued today's digest; this is tomorrow's.)
+    const step = Number(utcToZoned(nineTomorrow, org.timezone).date.replace(/-/g, ''));
+    const [digest] = await db
+      .select()
+      .from(outboundMessages)
+      .where(and(eq(outboundMessages.orgId, orgId), eq(outboundMessages.kind, 'DIGEST'), eq(outboundMessages.step, step)));
     assert.equal(digest.toAddress, 'team@reminder.test');
     assert.equal(digest.status, 'PENDING');
     assert.match(digest.subject, /^Reminder Dental: \d+ new leads?, \d+ bookings?/);

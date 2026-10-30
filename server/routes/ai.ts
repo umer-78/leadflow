@@ -3,7 +3,7 @@
  * self-test and knowledge updates (see ai-center.ts).
  */
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../auth.ts';
+import { rateLimit, requireAuth, requireRole } from '../auth.ts';
 import type { AppDeps } from '../app.ts';
 import { aiActivity, selfTest, setupChecks, updateStatus } from '../ai-center.ts';
 import { route } from '../http.ts';
@@ -15,6 +15,7 @@ const PERIODS = [7, 30, 90];
 export function aiRoutes(deps: AppDeps): Router {
   const { db } = deps;
   const r = Router();
+  r.use(rateLimit({ windowMs: 60_000, max: 120 }));
   r.use(requireAuth(db));
 
   r.get(
@@ -34,6 +35,8 @@ export function aiRoutes(deps: AppDeps): Router {
 
   r.post(
     '/self-test',
+    // Each run asks the assistant a dozen questions: plenty for a person, not for a script.
+    rateLimit({ windowMs: 60_000, max: 6 }),
     requireRole('STAFF'),
     route(async (req, res) => {
       const probes = await selfTest(db, req.auth!.org);

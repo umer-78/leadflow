@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { promisify } from 'node:util';
 import type { NextFunction, Request, Response } from 'express';
 import { and, eq, gt, lt } from 'drizzle-orm';
+import { ipKeyGenerator, rateLimit as expressRateLimit } from 'express-rate-limit';
 import type { DB } from './db/client.ts';
 import { organizations, sessions, users, type Organization, type Role, type User } from './db/schema.ts';
 import { HttpError } from './http.ts';
@@ -124,25 +125,21 @@ export function roleAtLeast(role: Role, minimum: Role): boolean {
   return RANK[role] >= RANK[minimum];
 }
 
-/** Simple fixed-window rate limiter keyed by IP (+ optional extra key). */
+/**
+ * Fixed-window rate limiter keyed by IP (+ optional extra key), in memory. Built on
+ * express-rate-limit so security scanners recognise it; IPv6 addresses are grouped by /56.
+ */
 export function rateLimit(options: { windowMs: number; max: number; key?: (req: Request) => string }) {
-  const hits = new Map<string, { count: number; resetAt: number }>();
-  return (req: Request, res: Response, next: NextFunction) => {
-    const now = Date.now();
-    const k = `${req.ip}|${options.key?.(req) ?? ''}`;
-    let entry = hits.get(k);
-    if (!entry || entry.resetAt <= now) {
-      entry = { count: 0, resetAt: now + options.windowMs };
-      hits.set(k, entry);
-    }
-    entry.count++;
-    if (hits.size > 50_000) {
-      for (const [key, v] of hits) if (v.resetAt <= now) hits.delete(key);
-    }
-    if (entry.count > options.max) {
-      res.setHeader('Retry-After', Math.ceil((entry.resetAt - now) / 1000));
-      return next(new HttpError(429, 'Too many requests. Please slow down and try again shortly.'));
-    }
-    next();
-  };
+  return expressRateLimit({
+    windowMs: options.windowMs,
+    limit: options.max,
+    standardHeaders: false,
+    legacyHeaders: false,
+    keyGenerator: (req) => `${ipKeyGenerator(req.ip ?? '')}|${options.key?.(req as Request) ?? ''}`,
+    handler: (req, res, next) => {
+      const reset = (req as Request & { rateLimit?: { resetTime?: Date } }).rateLimit?.resetTime;
+      res.setHeader('Retry-After', Math.max(1, Math.ceil(((reset?.getTime() ?? Date.now() + options.windowMs) - Date.now()) / 1000)));
+      next(new HttpError(429, 'Too many requests. Please slow down and try again shortly.'));
+    },
+  });
 }
