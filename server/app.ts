@@ -9,6 +9,7 @@ import type { DB } from './db/client.ts';
 import { errorHandler, route } from './http.ts';
 import type { PageFetcher } from './knowledge/importer.ts';
 import type { Mailer } from './mailer.ts';
+import { aiRoutes } from './routes/ai.ts';
 import { authRoutes } from './routes/auth.ts';
 import { billingRoutes } from './routes/billing.ts';
 import { dashboardRoutes } from './routes/dashboard.ts';
@@ -65,6 +66,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use('/api/public', publicRoutes(deps));
   app.use('/api/knowledge', knowledgeRoutes(deps));
   app.use('/api/billing', billingRoutes(deps));
+  app.use('/api/ai', aiRoutes(deps));
   app.use('/api', settingsRoutes(deps));
   app.use('/api', dashboardRoutes(deps));
   app.use(unsubscribeRoute(deps));

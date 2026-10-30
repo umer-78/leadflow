@@ -262,4 +262,48 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
     assert.match(digest.subject, /^Reminder Dental: \d+ new leads?, \d+ bookings?/);
     assert.match(digest.body, /New leads: \d+/);
   });
+
+  it('AI Center: workload, unanswered questions, setup checks, self-test and library updates', async () => {
+    const { publicKey } = (await owner('GET', '/api/settings')).body;
+    const chat = (message: string, visitorId: string, conversationId?: string) =>
+      client()('POST', `/api/public/chat/${publicKey}`, { visitorId, conversationId, message });
+    const first = await chat('do you sell gift cards', 'visitor_gift_cards_1');
+    assert.equal(first.status, 200);
+    await chat('what are your opening hours', 'visitor_gift_cards_1', first.body.conversationId);
+    await chat("that's not what i asked", 'visitor_gift_cards_1', first.body.conversationId);
+
+    const activity = await owner('GET', '/api/ai/activity?days=7');
+    assert.equal(activity.status, 200);
+    assert.ok(activity.body.workload.conversations >= 1);
+    assert.equal(activity.body.workload.byHour.length, 24);
+    assert.equal(activity.body.workload.byDay.length, 7);
+    assert.ok(activity.body.workload.emails.some((e: { kind: string; sent: number }) => e.kind === 'WAITLIST' && e.sent >= 1));
+    assert.deepEqual(
+      activity.body.quality.gaps.map((g: { question: string }) => g.question),
+      ['do you sell gift cards']
+    );
+    assert.equal(activity.body.quality.corrections[0]?.question, 'what are your opening hours');
+
+    const checks = (await owner('GET', '/api/ai/checks')).body.checks as { id: string; status: string }[];
+    const status = Object.fromEntries(checks.map((c) => [c.id, c.status]));
+    assert.equal(status.phone, 'ok');
+    assert.equal(status.alerts, 'ok');
+    assert.equal(status.placeholders, 'fail', 'a new clinic still has policy templates to fill in');
+    assert.equal(status.prices, 'fail', 'and no prices yet');
+
+    const test = await owner('POST', '/api/ai/self-test');
+    assert.equal(test.status, 200);
+    const probe = Object.fromEntries((test.body.probes as { id: string; ok: boolean }[]).map((p) => [p.id, p.ok]));
+    assert.equal(probe.urgent, true);
+    assert.equal(probe.er, true);
+    assert.equal(probe.hours, true);
+    assert.ok('insurance' in probe);
+
+    const updates = (await owner('GET', '/api/ai/updates')).body;
+    assert.equal(updates.pending, 0);
+    assert.equal(updates.available, 0);
+    assert.ok(updates.upToDate > 50);
+    const applied = await owner('POST', '/api/ai/updates/apply');
+    assert.deepEqual(applied.body.changed, { updated: 0, added: 0, retired: 0 });
+  });
 });
