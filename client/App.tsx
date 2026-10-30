@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Bot,
   CalendarDays,
   LayoutDashboard,
   LogOut,
@@ -14,6 +15,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, useApi } from './api.ts';
 import { setClinicTimeZone } from './format.ts';
+import { AiCenterPage } from './pages/AiCenter.tsx';
 import { AppointmentsPage } from './pages/Appointments.tsx';
 import { AuthPage } from './pages/Auth.tsx';
 import { ConversationsPage } from './pages/Conversations.tsx';
@@ -39,6 +41,7 @@ const NAV: { path: string; label: string; icon: ReactNode }[] = [
   { path: 'conversations', label: 'Conversations', icon: <MessagesSquare size={18} /> },
   { path: 'appointments', label: 'Appointments', icon: <CalendarDays size={18} /> },
   { path: 'knowledge', label: 'Knowledge & AI', icon: <BookOpen size={18} /> },
+  { path: 'ai', label: 'AI Center', icon: <Bot size={18} /> },
   { path: 'outbox', label: 'Emails', icon: <Mail size={18} /> },
   { path: 'settings', label: 'Settings', icon: <SettingsIcon size={18} /> },
 ];
@@ -97,7 +100,11 @@ function Shell({ me, onSignOut, onOrgChanged }: { me: Me; onSignOut: () => void;
       case 'appointments':
         return <AppointmentsPage {...props} />;
       case 'knowledge':
-        return <KnowledgePage {...props} draftQuestion={route.query.get('new') ?? undefined} />;
+        return (
+          <KnowledgePage {...props} draftQuestion={route.query.get('new') ?? undefined} openId={route.query.get('edit') ?? undefined} openImport={route.query.get('import') === '1'} />
+        );
+      case 'ai':
+        return <AiCenterPage {...props} tab={route.path[1]} />;
       case 'outbox':
         return <OutboxPage {...props} />;
       case 'settings':

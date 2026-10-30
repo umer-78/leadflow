@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Wait until a release has been out a while before proposing it.
+    cooldown:
+      default-days: 14
+      semver-major-days: 30
+    groups:
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      drizzle:
+        patterns: ["drizzle-orm", "drizzle-kit"]
+      vite:
+        patterns: ["vite", "@vitejs/*", "@tailwindcss/*", "tailwindcss"]
+      # Everything else that's only a patch release, in one PR.
+      patch-updates:
+        patterns: ["*"]
+        update-types: ["patch"]

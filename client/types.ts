@@ -29,6 +29,8 @@ export interface Lead {
   source: string;
   notes: string | null;
   optedOut: boolean;
+  /** Wants an earlier appointment if one opens up. */
+  waitlist: boolean;
   lastActivityAt: string;
   createdAt: string;
 }
@@ -77,16 +79,30 @@ export interface Appointment {
   status: AppointmentStatus;
   notes: string | null;
   source: string;
+  /** When the patient confirmed from a reminder email. */
+  patientConfirmedAt: string | null;
   createdAt: string;
   leadName?: string | null;
   leadPhone?: string | null;
   leadEmail?: string | null;
 }
 
+export type OutboundKind = 'FOLLOWUP' | 'STAFF_ALERT' | 'CONFIRMATION' | 'REMINDER' | 'RECALL' | 'NO_SHOW' | 'REVIEW' | 'REACTIVATION' | 'WAITLIST' | 'DIGEST';
+
+export interface Automations {
+  reminders: { enabled: boolean; hoursBefore: number[] };
+  recall: { enabled: boolean; months: number };
+  noShow: { enabled: boolean };
+  reviews: { enabled: boolean; url: string | null; delayHours: number };
+  reactivation: { enabled: boolean; afterDays: number };
+  waitlist: { enabled: boolean };
+  digest: { enabled: boolean; hour: number };
+}
+
 export interface Outbound {
   id: string;
   leadId: string | null;
-  kind: 'FOLLOWUP' | 'STAFF_ALERT' | 'CONFIRMATION';
+  kind: OutboundKind;
   step: number | null;
   toAddress: string;
   subject: string;
@@ -135,6 +151,7 @@ export interface Settings {
   greeting: string | null;
   emergencyInstructions: string | null;
   followupsEnabled: boolean;
+  automations: Automations;
   plan: string;
   planStatus: string;
   isDemo: boolean;

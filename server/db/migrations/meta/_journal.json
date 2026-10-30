@@ -15,6 +15,13 @@
       "when": 1792870506049,
       "tag": "0001_library_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793346959837,
+      "tag": "0002_automations",
+      "breakpoints": true
     }
   ]
 }

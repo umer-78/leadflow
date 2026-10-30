@@ -19,6 +19,8 @@ messages never leave your infrastructure.
 | **Booking** | Understands "next Tuesday afternoon", "after 4", "Oct 20 at 10:30", offers real free slots inside opening hours (clinic time zone, DST-safe), books them as *Requested*, and never double-books. |
 | **Leads** | Contact details captured from natural conversation ("I'm Maria, maria@x.com"), merged into one lead per person, scored 0–100 with the reason for every point (treatment value, booking, urgency, buying signals…). |
 | **Follow-up** | Emails at day 0, 1, 3 and 7, written from the knowledge base for the treatment the lead asked about. They stop automatically when the lead books, replies, opts out, unsubscribes, or staff mark them done. Appointment confirmations and staff alerts too. |
+| **Reminders** | Appointment reminders (24 h and 2 h before by default) with a confirm / cancel page; a cancelled slot is offered to waitlisted patients; review request and check-up recall after a completed visit; no-show follow-up; an optional "still thinking about it?" for leads that went quiet; a morning digest for the team. Every email is re-checked just before it goes out (a reminder for a cancelled visit is skipped, with the reason in the Outbox). Settings → Reminders. |
+| **AI Center** | The assistant's workload (chats, share handled without the team, after-hours share, bookings, busiest hours), answer quality (questions it couldn't answer, answers patients corrected, most-used articles), setup checks with links to fix them, a self-test that asks it common questions with the clinic's own knowledge, and library update status. |
 | **Dashboard** | Overview KPIs and activity chart, *needs attention* queue, leads, full transcripts with *why the assistant said that* (intent, confidence, sources), appointments workflow, knowledge editor with a live test console, email log, team roles, opening hours, widget install with live preview. |
 | **Learning loop** | Questions the assistant couldn't answer are listed on the overview with a one-click "Teach an answer". New articles are used immediately. Corrections and new articles in the built-in library reach every clinic on the next start, without overwriting anything a clinic reworded, priced or deleted. |
 | **Multi-clinic** | Every clinic is isolated (all queries scoped by organization). Roles: Owner, Admin, Staff, Viewer. |
@@ -101,4 +103,6 @@ and the Docker image runs anywhere.
   get an honest "I'm not sure — want the team to get back to you?" and are listed for you to teach.
   `localbrain`'s `refine` hook is where a generative model could be plugged in later.
 - Appointments are *requests* for staff to confirm; there is no two-way calendar sync yet.
-- Email only (no SMS) for follow-ups.
+- Email only (no SMS) for follow-ups and reminders.
+- See [docs/business/competitors.md](docs/business/competitors.md) for how LeadFlow compares with
+  Weave, NexHealth and AI receptionists, and the gaps worth closing next.

@@ -2,6 +2,7 @@
  * Server entry point: database, migrations, demo data, background worker,
  * API and the web app (Vite in development, built files in production).
  */
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -32,7 +33,9 @@ async function main() {
   if (config.env === 'production') {
     const dist = path.join(root, 'dist');
     app.use(express.static(dist, { index: false, maxAge: '1h' }));
-    app.get(/^\/(?!api\/|u\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+    // The dashboard's page is read once, so serving it doesn't touch the disk on every request.
+    const indexHtml = await readFile(path.join(dist, 'index.html'), 'utf8');
+    app.get(/^\/(?!api\/|u\/|a\/).*/, (_req, res) => res.type('html').send(indexHtml));
   } else {
     const { createServer } = await import('vite');
     const vite = await createServer({ root, server: { middlewareMode: true }, appType: 'spa' });

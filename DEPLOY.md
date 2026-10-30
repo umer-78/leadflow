@@ -70,6 +70,13 @@ Paste it before `</body>` (or in the site builder's custom-code area). Optional 
 `data-color="#0f766e"`, `data-label="Chat with us"`. The direct link
 `https://<your-url>/chat.html?key=pk_...` works for emails, social profiles and QR codes.
 
+## Keep it awake and watched
+
+- **Keep-alive:** a free Render instance sleeps when idle, and the first chat after that waits for it to wake. Set the repository variable `LEADFLOW_URL` (GitHub → Settings → Secrets and variables → Actions → Variables) to your app's URL and `.github/workflows/keepalive.yml` pings `/api/health` (app and database) every 10 minutes. GitHub runs schedules on a best-effort basis; for a strict 5-minute ping, also point a free uptime monitor (UptimeRobot, cron-job.org) at `https://<your-url>/api/health`.
+- **Security scanning:** `.github/workflows/codeql.yml` runs GitHub code scanning on every push and weekly (findings under Security → Code scanning). Dependabot (`.github/dependabot.yml`) proposes dependency updates weekly, after a two-week cooldown.
+- **Site checks:** `.github/workflows/site.yml` checks the marketing site in `docs/` for broken links on every change and weekly.
+- **AI Center:** after go-live, open **AI Center → Checks** in the dashboard and run the self-test; it asks the assistant what patients ask most using your own knowledge and settings, and lists anything to fix.
+
 ## Checklist before going live
 
 - [ ] `npm run lint && npm test` pass (CI does this on every push)
@@ -80,3 +87,5 @@ Paste it before `</body>` (or in the site builder's custom-code area). Optional 
 - [ ] Treatments you don't offer are hidden in **Knowledge & AI**
 - [ ] A test conversation on the live site creates a lead and an appointment request
 - [ ] Email sending is configured, or the team knows to check the **Emails** page
+- [ ] **Settings → Reminders** reviewed (review link added if you want review requests)
+- [ ] **AI Center → Checks** shows nothing to fix and the self-test passes
