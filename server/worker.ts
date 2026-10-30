@@ -1,5 +1,6 @@
 /**
- * Background worker: sends due follow-ups, confirmations and staff alerts.
+ * Background worker: sends due follow-ups, confirmations, staff alerts and the
+ * reminders in automations.ts, and runs the periodic automation sweeps.
  * Rows are claimed with FOR UPDATE SKIP LOCKED, so several app instances can
  * run the worker safely.
  */
@@ -7,6 +8,7 @@ import { and, asc, eq, inArray, lt, lte } from 'drizzle-orm';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
 import { appointments, knowledgeArticles, leads, organizations, outboundMessages, type OutboundMessage } from './db/schema.ts';
+import { AUTOMATION_KINDS, prepareAutomation, queueDigests, queueReactivations } from './automations.ts';
 import { renderFollowup } from './emails.ts';
 import { STOP_STATUSES } from './leads.ts';
 import { textToHtml, type Mailer } from './mailer.ts';
@@ -95,6 +97,13 @@ export async function processDue(deps: WorkerDeps, now: Date = new Date(), limit
           continue;
         }
         ({ subject, text } = await renderDueFollowup(deps, m));
+      } else if (AUTOMATION_KINDS.includes(m.kind)) {
+        const prepared = await prepareAutomation({ db, publicUrl: deps.config.publicUrl, now }, m);
+        if ('skip' in prepared) {
+          await db.update(outboundMessages).set({ status: 'SKIPPED', statusReason: prepared.skip }).where(eq(outboundMessages.id, m.id));
+          continue;
+        }
+        ({ subject, text } = prepared.send);
       }
       if (!mailer.live) {
         await db
@@ -118,6 +127,16 @@ export async function processDue(deps: WorkerDeps, now: Date = new Date(), limit
   return claimed.length;
 }
 
+/** Queue the periodic automations (each is idempotent, so running it twice queues nothing new). */
+export async function runSweeps(deps: WorkerDeps, now: Date = new Date()): Promise<{ reactivations: number; digests: number }> {
+  return {
+    reactivations: await queueReactivations(deps.db, now),
+    digests: await queueDigests(deps.db, now, deps.config.publicUrl),
+  };
+}
+
+const SWEEP_EVERY_MS = 15 * 60_000;
+
 export interface Worker {
   /** Run a pass now (no-op if one is already running). */
   tick(): Promise<void>;
@@ -126,9 +145,14 @@ export interface Worker {
 
 export function startWorker(deps: WorkerDeps, intervalMs: number): Worker {
   let running: Promise<void> | undefined;
+  let lastSweep = 0;
   const tick = () => {
     running ??= (async () => {
       try {
+        if (Date.now() - lastSweep >= SWEEP_EVERY_MS) {
+          lastSweep = Date.now();
+          await runSweeps(deps);
+        }
         while ((await processDue(deps)) > 0) {
           /* drain the queue */
         }

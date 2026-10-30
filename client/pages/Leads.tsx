@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { PageProps } from '../App.tsx';
 import { api, useApi } from '../api.ts';
 import { Transcript } from '../components/Transcript.tsx';
-import { dateTime, money, phone, timeAgo } from '../format.ts';
+import { dateTime, money, outboundLabel, phone, timeAgo } from '../format.ts';
 import { navigate } from '../router.ts';
 import type { Appointment, Conversation, Lead, LeadStatus, Message, Outbound } from '../types.ts';
 import {
@@ -24,6 +24,7 @@ import {
   PageHeader,
   Select,
   Textarea,
+  Toggle,
   TierBadge,
   useAction,
 } from '../ui.tsx';
@@ -211,8 +212,7 @@ interface LeadDetail {
   activity: { id: string; action: string; createdAt: string; details: Record<string, unknown> }[];
 }
 
-const STEP_LABEL = (o: Outbound) =>
-  o.kind === 'FOLLOWUP' ? `Follow-up · day ${o.step}` : o.kind === 'CONFIRMATION' ? 'Appointment confirmation' : 'Staff alert';
+const STEP_LABEL = (o: Outbound) => outboundLabel(o);
 
 function LeadPanel({ id, can, onClose, onChanged }: { id: string; can: PageProps['can']; onClose: () => void; onChanged: () => void }) {
   const detail = useApi<LeadDetail>(`/leads/${id}`);
@@ -242,6 +242,7 @@ function LeadPanel({ id, can, onClose, onChanged }: { id: string; can: PageProps
             <TierBadge tier={lead.tier} score={lead.score} />
             {lead.urgent && <Badge tone="red">Urgent</Badge>}
             {lead.optedOut && <Badge tone="gray">Opted out</Badge>}
+            {lead.waitlist && <Badge tone="blue">Waitlist</Badge>}
           </div>
         ) : (
           <span className="text-sm text-slate-500">Lead</span>
@@ -275,6 +276,19 @@ function LeadPanel({ id, can, onClose, onChanged }: { id: string; can: PageProps
                     Edit details
                   </button>
                 )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm">
+              <Toggle
+                checked={lead.waitlist}
+                disabled={!editable || busy || lead.optedOut}
+                onChange={(v) => void update({ waitlist: v }, v ? 'Added to the waitlist' : 'Removed from the waitlist')}
+                label="Waitlist"
+              />
+              <div>
+                <p className="font-medium text-slate-800">Waitlist for an earlier time</p>
+                <p className="text-slate-500">When an appointment is cancelled, the first three patients on the waitlist are emailed the opening.</p>
               </div>
             </div>
 

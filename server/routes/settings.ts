@@ -7,6 +7,7 @@ import { hashPassword, requireAuth, requireRole, roleAtLeast, verifyPassword } f
 import type { AppDeps } from '../app.ts';
 import { organizations, users, type DayKey, type Organization, type Role, type WeeklyHours } from '../db/schema.ts';
 import { HttpError, body, bool, email, int, nullableStr, oneOf, route, str, uuidParam } from '../http.ts';
+import { automationsOf, mergeAutomations } from '../automations.ts';
 import { logActivity } from '../leads.ts';
 import { newPublicKey } from '../orgs.ts';
 import { DAY_KEYS, isValidTimeZone } from '../scheduling.ts';
@@ -49,6 +50,7 @@ export function settingsView(org: Organization) {
     greeting: org.greeting,
     emergencyInstructions: org.emergencyInstructions,
     followupsEnabled: org.followupsEnabled,
+    automations: automationsOf(org),
     plan: org.plan,
     planStatus: org.planStatus,
     isDemo: org.isDemo,
@@ -95,6 +97,7 @@ export function settingsRoutes(deps: AppDeps): Router {
       if (minNotice !== undefined && minNotice !== null) patch.minNoticeHours = minNotice;
       const followups = bool(b, 'followupsEnabled');
       if (followups !== undefined) patch.followupsEnabled = followups;
+      if ('automations' in b) patch.automations = mergeAutomations(automationsOf(org), b.automations);
       const [updated] = await db
         .update(organizations)
         .set({ ...patch, updatedAt: new Date() })

@@ -4,13 +4,14 @@ import type { PageProps } from '../App.tsx';
 import { api, useApi } from '../api.ts';
 import { money, timeAgo } from '../format.ts';
 import { navigate } from '../router.ts';
-import type { DayKey, Plan, Role, Settings, TeamMember, WeeklyHours } from '../types.ts';
+import type { Automations, DayKey, Plan, Role, Settings, TeamMember, WeeklyHours } from '../types.ts';
 import { Badge, Button, Card, ErrorNote, Field, Input, Loading, Modal, PageHeader, Select, Textarea, Toggle, cx, useAction } from '../ui.tsx';
 
 const TABS = [
   { key: 'clinic', label: 'Clinic' },
   { key: 'hours', label: 'Hours & booking' },
   { key: 'assistant', label: 'Assistant' },
+  { key: 'automations', label: 'Reminders' },
   { key: 'widget', label: 'Website chat' },
   { key: 'team', label: 'Team' },
   { key: 'billing', label: 'Plan' },
@@ -46,6 +47,7 @@ export function SettingsPage(props: PageProps & { tab?: string; onOrgChanged: ()
           {tab === 'clinic' && <ClinicTab s={settings.data} save={save} canEdit={props.can('ADMIN')} />}
           {tab === 'hours' && <HoursTab s={settings.data} save={save} canEdit={props.can('ADMIN')} />}
           {tab === 'assistant' && <AssistantTab s={settings.data} save={save} canEdit={props.can('ADMIN')} />}
+          {tab === 'automations' && <AutomationsTab s={settings.data} save={save} canEdit={props.can('ADMIN')} />}
           {tab === 'widget' && <WidgetTab s={settings.data} canRotate={props.can('OWNER')} onRotated={(s) => { settings.setData(() => s); props.onOrgChanged(); }} />}
           {tab === 'team' && <TeamTab {...props} />}
           {tab === 'billing' && <BillingTab {...props} />}
@@ -82,7 +84,7 @@ function Section({ title, description, children, footer }: { title: string; desc
   );
 }
 
-function useForm<T extends Record<string, unknown>>(initial: T) {
+function useForm<T extends object>(initial: T) {
   const [form, setForm] = useState(initial);
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   const set = (k: keyof T) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -251,6 +253,104 @@ function AssistantTab({ s, save, canEdit }: { s: Settings; save: { busy: boolean
         </div>
       </fieldset>
     </Section>
+  );
+}
+
+const REMINDER_TIMES: { label: string; hours: number[] }[] = [
+  { label: '24 hours and 2 hours before', hours: [24, 2] },
+  { label: '48 hours and 24 hours before', hours: [48, 24] },
+  { label: '48 hours, 24 hours and 2 hours before', hours: [48, 24, 2] },
+  { label: '24 hours before', hours: [24] },
+  { label: '2 hours before', hours: [2] },
+];
+
+function AutomationRow({ checked, onChange, disabled, title, children }: { checked: boolean; onChange: (v: boolean) => void; disabled: boolean; title: string; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 border-t border-slate-100 pt-4 first:border-0 first:pt-0">
+      <Toggle checked={checked} disabled={disabled} onChange={onChange} label={title} />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="font-medium text-slate-800">{title}</p>
+        <div className="text-slate-500">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function AutomationsTab({ s, save, canEdit }: { s: Settings; save: { busy: boolean; save: Saver }; canEdit: boolean }) {
+  const { form, setForm, dirty } = useForm<Automations>(s.automations);
+  const set = <K extends keyof Automations>(key: K, patch: Partial<Automations[K]>) => setForm((f) => ({ ...f, [key]: { ...f[key], ...patch } }));
+  const timesKey = REMINDER_TIMES.findIndex((t) => t.hours.join() === form.reminders.hoursBefore.join());
+  const off = !canEdit;
+  const small = 'mt-2 w-auto';
+  return (
+    <>
+      {!s.emailLive && (
+        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          No email provider is connected yet, so these emails are written and logged in the Outbox but not delivered. Set RESEND_API_KEY on the server to send them.
+        </p>
+      )}
+      <Section
+        title="Patient reminders and follow-ups"
+        description="Each email is checked again just before it goes out: a reminder for a cancelled visit, or a recall for someone who already booked, is skipped. Patients who unsubscribe get nothing."
+        footer={canEdit && <Button variant="primary" disabled={!dirty || (form.reviews.enabled && !form.reviews.url)} loading={save.busy} onClick={() => void save.save({ automations: form })}>Save changes</Button>}
+      >
+        <div className="grid gap-4">
+          <AutomationRow title="Appointment reminders" checked={form.reminders.enabled} disabled={off} onChange={(v) => set('reminders', { enabled: v })}>
+            <p>With a link to confirm or cancel. Cancellations free the slot and alert the team.</p>
+            <Select aria-label="When to send reminders" className={small} disabled={off || !form.reminders.enabled} value={String(timesKey)} onChange={(e) => set('reminders', { hoursBefore: REMINDER_TIMES[Number(e.target.value)]?.hours ?? [24, 2] })}>
+              {timesKey < 0 && <option value="-1">{form.reminders.hoursBefore.join(', ')} hours before</option>}
+              {REMINDER_TIMES.map((t, i) => (
+                <option key={t.label} value={i}>{t.label}</option>
+              ))}
+            </Select>
+          </AutomationRow>
+          <AutomationRow title="Waitlist offers" checked={form.waitlist.enabled} disabled={off} onChange={(v) => set('waitlist', { enabled: v })}>
+            <p>When a visit is cancelled, the first three patients on the waitlist (mark them on the lead) are told about the opening.</p>
+          </AutomationRow>
+          <AutomationRow title="Missed-appointment follow-up" checked={form.noShow.enabled} disabled={off} onChange={(v) => set('noShow', { enabled: v })}>
+            <p>An hour after you mark a visit as a no-show, a friendly note with a link to rebook (skipped if they've rebooked).</p>
+          </AutomationRow>
+          <AutomationRow title="Check-up recall" checked={form.recall.enabled} disabled={off} onChange={(v) => set('recall', { enabled: v })}>
+            <p>After a completed visit, a reminder that the next check-up is due (skipped if they've booked or visited since).</p>
+            <Select aria-label="Recall after" className={small} disabled={off || !form.recall.enabled} value={String(form.recall.months)} onChange={(e) => set('recall', { months: Number(e.target.value) })}>
+              {[3, 4, 6, 9, 12].map((m) => (
+                <option key={m} value={m}>{m} months after the visit</option>
+              ))}
+            </Select>
+          </AutomationRow>
+          <AutomationRow title="Review requests" checked={form.reviews.enabled} disabled={off} onChange={(v) => set('reviews', { enabled: v })}>
+            <p>After a completed visit, a short thank-you asking for a review (at most once every six months per patient).</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Input aria-label="Review link" className="min-w-0 flex-1" disabled={off} placeholder="https://g.page/r/your-clinic/review" value={form.reviews.url ?? ''} onChange={(e) => set('reviews', { url: e.target.value.trim() || null })} />
+              <Select aria-label="Send review request after" className="w-auto" disabled={off || !form.reviews.enabled} value={String(form.reviews.delayHours)} onChange={(e) => set('reviews', { delayHours: Number(e.target.value) })}>
+                {[1, 2, 4, 24].map((h) => (
+                  <option key={h} value={h}>{h === 24 ? 'the next day' : `${h} h after the visit`}</option>
+                ))}
+              </Select>
+            </div>
+            {form.reviews.enabled && !form.reviews.url && <p className="mt-1 text-red-700">Add your review link to turn this on.</p>}
+          </AutomationRow>
+          <AutomationRow title="Re-engage quiet leads" checked={form.reactivation.enabled} disabled={off} onChange={(v) => set('reactivation', { enabled: v })}>
+            <p>One "still thinking about it?" email to leads who never booked and went quiet. Sent once per lead, in the morning.</p>
+            <Select aria-label="Quiet for" className={small} disabled={off || !form.reactivation.enabled} value={String(form.reactivation.afterDays)} onChange={(e) => set('reactivation', { afterDays: Number(e.target.value) })}>
+              {[30, 60, 90, 180].map((d) => (
+                <option key={d} value={d}>After {d} days without contact</option>
+              ))}
+            </Select>
+          </AutomationRow>
+        </div>
+      </Section>
+      <Section title="For your team" footer={canEdit && <Button variant="primary" disabled={!dirty} loading={save.busy} onClick={() => void save.save({ automations: form })}>Save changes</Button>}>
+        <AutomationRow title="Morning digest" checked={form.digest.enabled} disabled={off} onChange={(v) => set('digest', { enabled: v })}>
+          <p>Yesterday's leads, chats and bookings, questions the assistant couldn't answer, conversations waiting for a reply and today's appointments, sent to {s.notificationEmail ?? s.email ?? 'your notification email (set it on the Clinic tab)'}.</p>
+          <Select aria-label="Digest time" className={small} disabled={off || !form.digest.enabled} value={String(form.digest.hour)} onChange={(e) => set('digest', { hour: Number(e.target.value) })}>
+            {[6, 7, 8, 9, 10].map((h) => (
+              <option key={h} value={h}>Around {h} AM</option>
+            ))}
+          </Select>
+        </AutomationRow>
+      </Section>
+    </>
   );
 }
 

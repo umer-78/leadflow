@@ -71,6 +71,7 @@ export function AppointmentsPage({ can }: PageProps) {
                         <p className="truncate text-xs text-slate-500">
                           {[phone(a.leadPhone), a.leadEmail].filter(Boolean).join(' · ') || 'No contact details'}
                           {a.source === 'AI_RECEPTIONIST' ? ' · booked by the assistant' : ''}
+                          {a.patientConfirmedAt && ['REQUESTED', 'CONFIRMED'].includes(a.status) ? ' · patient confirmed ✓' : ''}
                         </p>
                       </div>
                       <ApptStatusBadge status={a.status} />
