@@ -140,6 +140,12 @@ export const DEFAULT_ASPECTS: AspectRule[] = [
     answer: /\b\d+(?:\.\d+)?\s?(?:mSv|mg|ml|%|percent)\b|\b(?:smear|pea-sized|grain of rice)\b|\b(?:very )?low dose\b|\bsmall amount\b|\bless than (?:one|a) day\b/,
   },
   {
+    // "Why do I need X-rays?", "what's the point of a night guard?"
+    name: 'reason',
+    ask: /^(?:so |and |but |ok |okay )?(?:why\b|how come\b)|\bwhat(?:'s| is) the (?:point|reason|purpose) of\b|\bwhy (?:do|does|would|should|is|are) (?:i|you|we|my|it|they|the)\b/,
+    answer: /\bbecause\b|\bso (?:that|the|it|they|you|your|a)\b|\bto (?:see|check|find|protect|prevent|stop|keep|help|make|spot|catch|save|hold|repair|reduce)\b|\bwhich is why\b|\bmatters?\b|\bimportant\b|\bprotects?\b|\bhelps?\b|\bcan (?:lead|cause)\b/,
+  },
+  {
     name: 'cost',
     ask: /\bhow much (?:is|are|was|were|does|do|did|would|will|for|to|it|they|money|roughly|approximately|about|per)\b|\bhow much \$|\bhow much\b(?:\s+\S+)?\s*\??$|\bcosts?\b|\bprices?\b|\bfees?\b|\bexpensive\b|\bafford|\bcheap|\binsurance\b|\bcovered\b|\bcover (?:it|them|this|that)\b|\bfree\b|\bquotes?\b|\bestimates?\b|\bballpark\b/,
     answer: /\$\d|\bcosts?\b|\bprice\b|\bfees?\b|\bafford|\binsurance\b|\bcovered\b|\bpayment\b|\bfinanc|\blower-cost\b|\bbudget\b|\bup front\b|\bexpensive\b|(?<!-)\bfree\b(?!-)/,

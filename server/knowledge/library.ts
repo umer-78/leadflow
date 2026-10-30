@@ -295,11 +295,11 @@ Immediate dentures, fitted on the day teeth are removed, usually need adjusting 
     service: 'Root canal treatment',
     caseValue: 1200,
     priceUnit: 'per tooth (varies by tooth)',
-    tags: ['root canal', 'endodontic', 'endodontics', 'nerve treatment', 'infected tooth', 'tooth infection', 'abscessed tooth', 'pulp'],
+    tags: ['root canal', 'endodontic', 'endodontics', 'nerve treatment', 'infected tooth', 'tooth infection', 'abscessed tooth', 'pulp', 'save my tooth', 'save a tooth', 'keep my tooth', 'instead of pulling it', 'avoid an extraction'],
     summary:
       'Root canal treatment removes infected or inflamed pulp from inside a tooth, cleans and disinfects the canals and seals them, saving the tooth instead of extracting it.',
     body: `Signs a tooth may need it include a lingering ache or sensitivity to hot or cold, pain when biting, a darkening tooth, or a swelling or small bump on the gum; only an exam and X-rays can confirm it.
-It is done under local anaesthetic, and for most people it feels similar to having a filling.
+It is done under local anaesthetic, so it shouldn't hurt, and for most people it feels similar to having a filling.
 It is usually completed in one or two visits.
 The tooth may feel tender for a few days afterwards, which over-the-counter pain relievers usually manage.
 Back teeth usually need a crown afterwards to protect them from cracking, while front teeth often don't; putting off the permanent filling or crown raises the risk of the tooth breaking or the treatment failing.
@@ -327,6 +327,7 @@ You should feel pressure but not sharp pain during the procedure.
 Most people recover from a simple extraction in a few days; a surgical extraction can take a week or so.
 Following the aftercare instructions protects the blood clot and helps prevent dry socket.
 The dentist can discuss replacing the tooth with an implant, bridge or denture if needed.
+If you would rather keep the tooth, ask whether root canal treatment, a crown or gum treatment could save it; a second opinion, for example from an endodontist (a root canal specialist), can help you decide.
 For the first 24 hours, don't rinse, spit forcefully or drink through a straw, and avoid smoking and strenuous exercise, so the blood clot stays in place.
 The gum usually closes over within a few weeks, while the bone underneath takes a few months to fill in.`,
     references: [
@@ -900,6 +901,40 @@ You'll leave with a clear explanation of anything the dentist found and the opti
       { name: 'American Dental Association (MouthHealthy): Common questions about going to the dentist', url: 'https://www.mouthhealthy.org/dental-care/questions-about-going-to-the-dentist/' },
     ],
   },
+  {
+    slug: 'smile-makeover',
+    category: 'FAQ',
+    title: 'Improving your smile',
+    tags: ['hate my smile', 'improve my smile', 'smile makeover', 'fix my smile', 'unhappy with my smile', 'unhappy with my teeth', 'better smile', 'nicer smile', 'self-conscious about my teeth', 'embarrassed to smile', 'ugly teeth', 'nicer teeth', 'perfect smile', 'change my smile', 'dont like my teeth'],
+    summary:
+      'If you\'re unhappy with how your teeth look, there are options for almost every concern: whitening for colour, bonding or veneers for chips, gaps and shape, clear aligners or braces for crooked teeth, and implants, bridges or dentures for missing teeth.',
+    body: `The best start is a consultation: the dentist looks at your teeth, gums and bite, asks what bothers you most, and suggests options with their costs.
+Healthy teeth and gums come first, so any decay or gum disease is treated before cosmetic work.
+Whitening only changes natural teeth, so it is usually done before bonding, veneers or crowns, which are then matched to the brighter shade.
+Many people combine treatments in stages, starting with whatever matters most to them.`,
+    references: [
+      { name: 'Cleveland Clinic: Cosmetic dentistry', url: 'https://my.clevelandclinic.org/health/treatments/23914-cosmetic-dentistry' },
+      { name: 'Cleveland Clinic: Dental veneers', url: 'https://my.clevelandclinic.org/health/treatments/23522-dental-veneers' },
+      { name: 'NHS: Teeth whitening', url: 'https://www.nhs.uk/tests-and-treatments/teeth-whitening/' },
+    ],
+  },
+  {
+    slug: 'returning-after-years',
+    category: 'FAQ',
+    title: 'Coming back to the dentist after years away',
+    tags: ['haven\'t been to the dentist in years', 'havent been to a dentist in years', 'not been to the dentist in years', 'embarrassed about my teeth', 'ashamed of my teeth', 'been a long time since the dentist', 'years since my last visit', 'neglected my teeth', 'avoided the dentist', 'not been in ages', 'bad teeth', 'my teeth are a mess', 'scared of what the dentist will say'],
+    summary:
+      'Many people put off the dentist for years, often because of cost, worry or a bad past experience, and dental teams are used to helping people get back on track. The first visit is about understanding where things stand.',
+    body: `The first visit is usually a full exam with X-rays, time to talk about any worries, and a plan that starts with whatever is most urgent.
+If a lot of tartar has built up, the cleaning may be spread over more than one visit, sometimes as a deep cleaning below the gums.
+Treatment can often be done in stages, so the visits and the cost can be spread out.
+If you feel nervous, tell the team so they can explain each step and go at your pace.`,
+    references: [
+      { name: 'American Dental Association (MouthHealthy): Common questions about going to the dentist', url: 'https://www.mouthhealthy.org/dental-care/questions-about-going-to-the-dentist/' },
+      { name: 'Cleveland Clinic: Scaling and root planing', url: 'https://my.clevelandclinic.org/health/treatments/23983-tooth-scaling-and-root-planing' },
+      { name: 'Cleveland Clinic: Sedation dentistry', url: 'https://my.clevelandclinic.org/health/treatments/22275-sedation-dentistry' },
+    ],
+  },
 
   {
     slug: 'fluoride',
@@ -1151,7 +1186,7 @@ Keeping your gums healthy with daily cleaning and regular check-ups is worthwhil
     slug: 'childrens-treatments',
     category: 'FAQ',
     title: 'Treatments for children\'s teeth',
-    tags: ['silver diamine fluoride', 'sdf', 'black spots on my childs teeth', 'stainless steel crown', 'silver crown', 'baby root canal', 'pulpotomy', 'space maintainer', 'cavity in a baby tooth', 'do baby teeth need fillings', 'kids cavities'],
+    tags: ['silver diamine fluoride', 'sdf', 'black spots on my childs teeth', 'stainless steel crown', 'silver crown', 'baby root canal', 'pulpotomy', 'space maintainer', 'cavity in a baby tooth', 'baby tooth cavity', 'filling in a baby tooth', 'do baby teeth need fillings', 'fill a baby tooth', 'kids cavities', 'child has a cavity'],
     summary:
       'Decay in baby teeth is treated because baby teeth hold space for adult teeth and help children eat and speak. Depending on the tooth, the dentist may use fluoride, silver diamine fluoride, a filling, a stainless steel crown or a baby-tooth nerve treatment (pulpotomy).',
     body: `Silver diamine fluoride is a liquid brushed onto a cavity to stop it growing without drilling, which helps young or anxious children; after treatment the decayed area turns permanently black, which is expected.
