@@ -24,6 +24,26 @@ database. Migrations run automatically when the server starts.
 > Render's free plans sleep when idle and the free database expires after a trial period.
 > Use paid instances for real clinics so follow-up emails go out on time and data persists.
 
+## Live server — AWS Lightsail
+
+LeadFlow runs on an AWS Lightsail server (`leadflow`, us-east-1, 2 GB, Ubuntu 24.04) at
+**https://184-195-78-153.sslip.io** (static IP `184.195.78.153`; HTTPS by Caddy). The app,
+its PostgreSQL database and the background worker all run on that server, set up by the
+launch script in the instance's details. It's paid from the AWS Free plan credits.
+
+Open a terminal with **Lightsail console → leadflow → Connect using SSH** (SSH is only
+open to the console's browser terminal), then:
+
+| To | Run |
+| --- | --- |
+| Update to the latest `main` | `sudo /opt/leadflow/update.sh` |
+| Turn on Claude answers / email | add `ANTHROPIC_API_KEY=...` or `RESEND_API_KEY=...` and `EMAIL_FROM=...` to `/etc/leadflow/env` (`sudo nano /etc/leadflow/env`), then `sudo systemctl restart leadflow` |
+| Use your own domain | point its DNS A record at `184.195.78.153`, then `echo app.your-clinic.com \| sudo tee /etc/leadflow/domain && sudo /opt/leadflow/set-host.sh` |
+| See the logs | `journalctl -u leadflow -n 100` (setup: `/var/log/leadflow-setup.log`) |
+| Back up the database | `sudo -u postgres pg_dump leadflow > leadflow.sql` |
+
+Secrets live only on the server, in `/etc/leadflow/env` (readable by root and the app).
+
 ## Option B — any Docker host
 
 ```bash
