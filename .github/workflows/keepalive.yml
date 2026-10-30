@@ -1,10 +1,10 @@
 name: Keep-alive
 
-# Pings the deployed app so a free Render instance (and its free database)
-# doesn't go to sleep between visitors. Set the repository variable
-# LEADFLOW_URL (Settings → Secrets and variables → Actions → Variables), e.g.
-# https://leadflow.onrender.com; until then the job just says there's nothing
-# to ping. GitHub runs schedules on a best-effort basis, so for a strict
+# Pings the deployed app so a sleeping host (like a free Render instance and its
+# free database) stays awake, and so a broken deploy shows up as a failed run.
+# It pings the AWS Lightsail server (see DEPLOY.md) unless the repository
+# variable LEADFLOW_URL (Settings → Secrets and variables → Actions → Variables)
+# points somewhere else. GitHub runs schedules on a best-effort basis, so for a strict
 # 5-minute ping also point a free uptime monitor at the same /api/health URL.
 on:
   schedule:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Ping /api/health (app and database)
         env:
-          URL: ${{ vars.LEADFLOW_URL }}
+          URL: ${{ vars.LEADFLOW_URL || 'https://184-195-78-153.sslip.io' }}
         run: |
           if [ -z "$URL" ]; then
             echo "::notice::Set the LEADFLOW_URL repository variable to keep the deployed app awake."
