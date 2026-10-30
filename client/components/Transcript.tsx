@@ -72,6 +72,12 @@ export function Transcript({ messages }: { messages: Message[] }) {
                     <BookOpen size={11} /> <span className="font-medium">Sources:</span> {m.meta.sources.map((s) => s.title).join(', ')}
                   </p>
                 )}
+                {m.meta.llm && (
+                  <p>
+                    <span className="font-medium">Written by:</span> Claude ({m.meta.llm.model}, {(m.meta.llm.ms / 1000).toFixed(1)} s)
+                    {m.meta.llm.builtin && <span className="block text-slate-500">Built-in draft: {m.meta.llm.builtin}</span>}
+                  </p>
+                )}
               </div>
             )}
           </li>

@@ -2,6 +2,7 @@
  * Runtime configuration, read once from the environment.
  */
 import 'dotenv/config';
+import { DEFAULT_CLAUDE_MODEL, type ClaudeConfig } from './claude.ts';
 
 function int(name: string, fallback: number): number {
   const v = Number(process.env[name]);
@@ -27,6 +28,8 @@ export interface Config {
     secretKey: string | undefined;
     webhookSecret: string | undefined;
   };
+  /** Optional Claude answering mode (see claude.ts); off without an API key. */
+  anthropic: ClaudeConfig;
 }
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -47,6 +50,13 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     stripe: {
       secretKey: process.env.STRIPE_SECRET_KEY?.startsWith('sk_') ? process.env.STRIPE_SECRET_KEY : undefined,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || undefined,
+    },
+    anthropic: {
+      apiKey: process.env.ANTHROPIC_API_KEY || undefined,
+      model: process.env.ANTHROPIC_MODEL || DEFAULT_CLAUDE_MODEL,
+      effort: (['low', 'medium', 'high'] as const).find((e) => e === process.env.ANTHROPIC_EFFORT) ?? 'low',
+      timeoutMs: int('CLAUDE_TIMEOUT_MS', 15_000),
+      dailyLimit: int('CLAUDE_DAILY_LIMIT', 500),
     },
     ...overrides,
   };

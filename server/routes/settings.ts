@@ -50,6 +50,7 @@ export function settingsView(org: Organization) {
     greeting: org.greeting,
     emergencyInstructions: org.emergencyInstructions,
     followupsEnabled: org.followupsEnabled,
+    claudeEnabled: org.claudeEnabled,
     automations: automationsOf(org),
     plan: org.plan,
     planStatus: org.planStatus,
@@ -65,7 +66,13 @@ export function settingsRoutes(deps: AppDeps): Router {
   r.get(
     '/settings',
     route(async (req, res) => {
-      res.json({ ...settingsView(req.auth!.org), emailLive: deps.mailer.live, publicUrl: deps.config.publicUrl ?? null });
+      res.json({
+        ...settingsView(req.auth!.org),
+        emailLive: deps.mailer.live,
+        publicUrl: deps.config.publicUrl ?? null,
+        // Claude is available only when the server has an Anthropic API key.
+        claude: deps.claude ? { model: deps.claude.model } : null,
+      });
     })
   );
 
@@ -97,6 +104,8 @@ export function settingsRoutes(deps: AppDeps): Router {
       if (minNotice !== undefined && minNotice !== null) patch.minNoticeHours = minNotice;
       const followups = bool(b, 'followupsEnabled');
       if (followups !== undefined) patch.followupsEnabled = followups;
+      const claude = bool(b, 'claudeEnabled');
+      if (claude !== undefined) patch.claudeEnabled = claude;
       if ('automations' in b) patch.automations = mergeAutomations(automationsOf(org), b.automations);
       const [updated] = await db
         .update(organizations)

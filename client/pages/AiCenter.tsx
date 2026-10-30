@@ -19,6 +19,7 @@ interface Activity {
     byHour: number[];
     byDay: { date: string; conversations: number; messages: number }[];
     emails: { kind: OutboundKind; sent: number; skipped: number; failed: number; scheduled: number }[];
+    claude: { answers: number; unanswered: number; tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost: number | null };
   };
   quality: {
     answered: number;
@@ -122,6 +123,17 @@ function Workload({ a }: { a: Activity }) {
         <Stat label="Handed to the team" value={w.conversations - w.handledAlone} hint="urgent, callbacks, complaints" />
         <Stat label="Emails sent" value={w.emails.reduce((s, e) => s + e.sent, 0)} hint="follow-ups, reminders, alerts" />
       </div>
+      {w.claude.answers > 0 && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Answers written by Claude" value={w.claude.answers} hint={`${w.claude.unanswered} it couldn't answer from your knowledge`} />
+          <Stat
+            label="Claude tokens"
+            value={(w.claude.tokens.input + w.claude.tokens.output + w.claude.tokens.cacheRead + w.claude.tokens.cacheWrite).toLocaleString('en-US')}
+            hint={`${w.claude.tokens.cacheRead.toLocaleString('en-US')} read from the prompt cache`}
+          />
+          <Stat label="Estimated Claude cost" value={w.claude.cost === null ? '—' : `$${w.claude.cost.toFixed(2)}`} hint={`about $${w.claude.cost && w.claude.answers ? (w.claude.cost / w.claude.answers).toFixed(3) : '0'} per answer`} />
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Chats per day">
           <Columns values={w.byDay.map((d) => d.conversations)} labels={w.byDay.map((d) => shortDate(d.date))} caption="Conversations per day" />

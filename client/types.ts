@@ -44,6 +44,8 @@ export interface MessageMeta {
   safetyReason?: string;
   unanswered?: boolean;
   suggestions?: string[];
+  /** Set when Claude wrote the answer: the model and what the built-in engine had drafted. */
+  llm?: { model: string; ms: number; answered: boolean; builtin?: string };
 }
 
 export interface Message {
@@ -151,6 +153,10 @@ export interface Settings {
   greeting: string | null;
   emergencyInstructions: string | null;
   followupsEnabled: boolean;
+  /** Let Claude answer open questions (only takes effect when the server has Claude). */
+  claudeEnabled: boolean;
+  /** Present when the server has an Anthropic API key. */
+  claude?: { model: string } | null;
   automations: Automations;
   plan: string;
   planStatus: string;

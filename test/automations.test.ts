@@ -5,12 +5,13 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { after, before, describe, it } from 'node:test';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { createApp } from '../server/app.ts';
 import { loadConfig } from '../server/config.ts';
 import { connect, runMigrations, type Database } from '../server/db/client.ts';
-import { appointments, leads, organizations, outboundMessages } from '../server/db/schema.ts';
+import { appointments, leads, messages, organizations, outboundMessages } from '../server/db/schema.ts';
+import type { Answerer, ClaudePrompt } from '../server/claude.ts';
 import { mergeAutomations, DEFAULT_AUTOMATIONS } from '../server/automations.ts';
 import { newUnsubscribeToken } from '../server/leads.ts';
 import type { MailMessage, Mailer } from '../server/mailer.ts';
@@ -52,10 +53,10 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
   const deps = () => ({ db: database.db, mailer, config });
   const mailTo = (to: string) => sent.filter((m) => m.to === to);
 
-  function client(): Call {
+  function client(at?: () => string): Call {
     let cookie = '';
     return async (method, path, body) => {
-      const res = await fetch(base + path, {
+      const res = await fetch((at?.() ?? base) + path, {
         method,
         redirect: 'manual',
         headers: { ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(cookie ? { cookie } : {}) },
@@ -319,5 +320,68 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
     assert.ok(updates.upToDate > 50);
     const applied = await owner('POST', '/api/ai/updates/apply');
     assert.deepEqual(applied.body.changed, { updated: 0, added: 0, retired: 0 });
+  });
+
+  it('Claude answers open questions when it is on, within the daily limit, and never sees safety or booking turns', async () => {
+    const db = database.db;
+    const asked: ClaudePrompt[] = [];
+    const fake: Answerer = {
+      model: 'claude-test',
+      async answer(prompt) {
+        asked.push(prompt);
+        return { text: 'Gift cards are available at the front desk.', answered: true, model: 'claude-test', usage: { input: 500, output: 20, cacheRead: 4000, cacheWrite: 0 }, ms: 5 };
+      },
+    };
+    const withClaude = createApp({ db, config: { ...config, anthropic: { ...config.anthropic, dailyLimit: 2 } }, mailer, claude: fake }).listen(0);
+    const url = `http://127.0.0.1:${(withClaude.address() as AddressInfo).port}`;
+    try {
+      const staff = client(() => url);
+      await staff('POST', '/api/auth/login', { email: 'rae@reminder.test', password: 'password123' });
+      const settings = (await staff('GET', '/api/settings')).body;
+      assert.deepEqual(settings.claude, { model: 'claude-test' });
+      assert.equal(settings.claudeEnabled, true);
+      const say = async (message: string) =>
+        (await client(() => url)('POST', `/api/public/chat/${settings.publicKey}`, { visitorId: `visitor_claude_${Math.random().toString(36).slice(2, 10)}`, message })).body;
+
+      const first = await say('do you sell gift cards');
+      assert.equal(first.reply.text, 'Gift cards are available at the front desk.');
+      assert.equal(asked.length, 1);
+      assert.match(asked[0].system, /front-desk assistant for Reminder Dental/);
+      assert.match(asked[0].user, /do you sell gift cards/);
+      const [saved] = await db.select().from(messages).where(and(eq(messages.conversationId, first.conversationId), eq(messages.role, 'assistant')));
+      const meta = saved.meta as { llm?: { model: string; builtin: string }; unanswered?: boolean; question?: string };
+      assert.equal(saved.body, first.reply.text);
+      assert.equal(meta.llm?.model, 'claude-test');
+      assert.match(meta.llm?.builtin ?? '', /not sure|rather not guess/);
+      assert.equal(meta.unanswered, false);
+      assert.equal(meta.question, undefined);
+
+      // Emergencies and booking never go to Claude.
+      assert.match((await say('I knocked my tooth out playing football')).reply.text, /see a dentist immediately/);
+      await say('can you see me this week?');
+      assert.equal(asked.length, 1);
+
+      // The daily limit (2 here): the third open question gets the built-in answer.
+      await say('can i bring my dog to the appointment');
+      assert.equal(asked.length, 2);
+      const third = await say('do you have wifi in the waiting room');
+      assert.equal(asked.length, 2);
+      assert.doesNotMatch(third.reply.text, /Gift cards/);
+
+      // The AI Center counts Claude's answers.
+      const activity = (await staff('GET', '/api/ai/activity?days=7')).body;
+      assert.equal(activity.workload.claude.answers, 2);
+      assert.equal(activity.workload.claude.tokens.cacheRead, 8000);
+      const checks = (await staff('GET', '/api/ai/checks')).body.checks as { id: string; status: string }[];
+      assert.equal(checks.find((c) => c.id === 'claude')?.status, 'ok');
+
+      // A clinic can switch it off.
+      assert.equal((await staff('PATCH', '/api/settings', { claudeEnabled: false })).body.claudeEnabled, false);
+      await db.delete(messages).where(sql`${messages.meta} ? 'llm'`);
+      await say('do you sell gift cards');
+      assert.equal(asked.length, 2);
+    } finally {
+      withClaude.close();
+    }
   });
 });

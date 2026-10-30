@@ -64,6 +64,8 @@ export const organizations = pgTable('organizations', {
   /** Extra instructions shown for urgent problems, e.g. an after-hours number. */
   emergencyInstructions: text('emergency_instructions'),
   followupsEnabled: boolean('followups_enabled').notNull().default(true),
+  /** Let Claude write answers to open questions (only when the server has an Anthropic API key). */
+  claudeEnabled: boolean('claude_enabled').notNull().default(true),
   automations: jsonb('automations').$type<Partial<AutomationSettings>>().notNull().default({}),
   plan: text('plan').notNull().default('trial'),
   planStatus: text('plan_status').notNull().default('trial'),

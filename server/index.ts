@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { createApp } from './app.ts';
+import { createClaudeAnswerer } from './claude.ts';
 import { loadConfig } from './config.ts';
 import { connect, runMigrations } from './db/client.ts';
 import { createMailer } from './mailer.ts';
@@ -28,7 +29,10 @@ async function main() {
 
   const mailer = createMailer(config.email);
   const worker = config.runWorker ? startWorker({ db: database.db, mailer, config }, config.workerIntervalMs) : undefined;
-  const app = createApp({ db: database.db, config, mailer, kick: () => void worker?.tick() });
+  const { apiKey } = config.anthropic;
+  const claude = apiKey ? createClaudeAnswerer({ ...config.anthropic, apiKey }) : undefined;
+  if (claude) console.log(`[leadflow] Claude answers on: ${claude.model} (effort ${config.anthropic.effort})`);
+  const app = createApp({ db: database.db, config, mailer, claude, kick: () => void worker?.tick() });
 
   if (config.env === 'production') {
     const dist = path.join(root, 'dist');

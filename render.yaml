@@ -31,6 +31,9 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Claude answers (optional): without a key the built-in assistant answers everything.
+      - key: ANTHROPIC_API_KEY
+        sync: false
       # Stripe billing (optional).
       - key: STRIPE_SECRET_KEY
         sync: false
