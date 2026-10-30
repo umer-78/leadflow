@@ -113,10 +113,12 @@ export const INTENTS: IntentDefinition[] = [
       'do you have time on friday afternoon', 'is there anything open next week', 'can I get in today',
       'what is your earliest appointment', 'I need an appointment', 'I want an appointment', 'make me an appointment',
       'can I book for next week', 'I would like to see someone', 'book a visit', 'schedule me', 'I need to come in',
+      'can you see me this week', 'can you see me today', 'could you see me tomorrow', 'can you fit me in this week', 'can she come in tomorrow',
+      'can he come in today', 'can my son come in this week', 'can you squeeze me in', 'is there a time this week',
       'do you have a slot on tuesday', 'any appointments left this week', 'can I see the dentist tomorrow',
       'I would like to make a booking', 'reserve a time for me', 'let me book', 'sign me up for an appointment',
     ],
-    keywords: ['appointment', 'appointments', 'book', 'booking', 'schedule', 'availability', 'available times', 'any openings', 'fit me in', 'come in'],
+    keywords: ['appointment', 'appointments', 'book', 'booking', 'schedule', 'availability', 'available times', 'any openings', 'fit me in', 'come in', 'see me', 'squeeze me in'],
   },
   {
     name: 'reschedule',

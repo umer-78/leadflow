@@ -43,9 +43,13 @@ const PROCEDURE_QUESTION =
   /\b(will|would|does|do|is it|after|during|before|how much)\b[^.?!]{0,40}\b(whiten\w*|implants?|veneers?|braces|aligners?|invisalign|root canals?|cleaning|fillings?|crowns?|extractions?|bonding|surgery|procedure|treatment|injection|numbing)\b/;
 const PAIN = /\b(toothache|tooth ache|pain|painful|hurts?|hurting|aching|aches|ache|sore|throbbing|killing me)\b/;
 const FIRST_PERSON = /\b(my|i|im|ive|me|mine)\b/;
-const MOUTH = /\b(tooth|teeth|molar|molars|jaw|gum|gums|mouth|wisdom)\b/;
+const MOUTH = /\b(tooth|teeth|molar|molars|jaw|gum|gums|mouth|wisdom|chew|chewing|bite|biting)\b/;
 const INTENSE =
-  /\b(severe|severely|unbearable|excruciating|terrible|terribly|horrible|awful|really bad|so bad|so much|really hurts?|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|could not sleep|couldnt sleep|all night|cant eat|cannot eat|agony|crying|like hell|cant take it|cannot take it)\b/;
+  /\b(severe|severely|unbearable|excruciating|terrible|terribly|horrible|awful|really bad|so bad|so much|really hurts?|extreme|extremely|intense|killing me|worst|cant sleep|cannot sleep|could not sleep|couldnt sleep|all night|cant eat|cannot eat|agony|crying|like hell|cant take it|cannot take it|wakes? me( up)?|woke me( up)?|waking me( up)?|keeps me up|keeping me up|up at night)\b/;
+/** "It's not painful", "doesn't hurt": a problem without pain is not an emergency. */
+const NO_PAIN = /\b(not (painful|sore|hurting|in pain)|(doesnt|does not|dont|do not|isnt|is not) (hurt|hurting|painful|sore)|no pain|painless|without (any )?pain|pain ?free)\b/;
+const CHIPPED =
+  /\b(broke|broken|chipped|chip|cracked|crack|snapped|fractured)\b[^.?!]{0,20}\b(tooth|teeth|front|molar|veneer)\b|\b(tooth|teeth|molar|veneer)\b[^.?!]{0,15}\b(broke|broken|chipped|cracked|snapped|fractured)\b/;
 
 const RULES: Rule[] = [
   // ---- possible medical emergencies
@@ -111,13 +115,17 @@ const RULES: Rule[] = [
       !PROCEDURE_QUESTION.test(t),
   },
   {
+    level: 'SOON',
+    topic: 'broken-or-chipped-tooth',
+    reason: 'Chipped tooth without pain',
+    advice: 'A chip that doesn’t hurt isn’t an emergency, but it should be checked so it doesn’t crack further. Small chips can often be repaired with bonding, and larger breaks with a crown.',
+    test: (t) => CHIPPED.test(t) && NO_PAIN.test(t) && !/\b(bleed\w*|swell\w*|swollen|loose|nerve|knocked)\b/.test(t) && !PROCEDURE_QUESTION.test(t) && FIRST_PERSON.test(t),
+  },
+  {
     level: 'URGENT',
     topic: 'broken-or-chipped-tooth',
     reason: 'Broken or chipped tooth',
-    test: (t) =>
-      /\b(broke|broken|chipped|chip|cracked|crack|snapped|fractured)\b[^.?!]{0,20}\b(tooth|teeth|front|molar|veneer)\b|\b(tooth|teeth|molar|veneer)\b[^.?!]{0,15}\b(broke|broken|chipped|cracked|snapped|fractured)\b/.test(t) &&
-      !PROCEDURE_QUESTION.test(t) &&
-      FIRST_PERSON.test(t),
+    test: (t) => CHIPPED.test(t) && !PROCEDURE_QUESTION.test(t) && FIRST_PERSON.test(t),
   },
   {
     level: 'URGENT',
@@ -168,7 +176,9 @@ const RULES: Rule[] = [
     // Twinges with cold or sweet things are sensitivity, answered from the knowledge base.
     test: (t) =>
       PAIN.test(t) && FIRST_PERSON.test(t) && (MOUTH.test(t) || /toothache/.test(t)) && !PROCEDURE_QUESTION.test(t) &&
-      !(/\b(cold|hot|sweet|sensitive|ice|ice cream)\b/.test(t) && !INTENSE.test(t)),
+      !(/\b(cold|hot|sweet|sensitive|ice|ice cream)\b/.test(t) && !INTENSE.test(t)) &&
+      // Sore spots from dentures, braces or aligners are answered from their articles.
+      !/\b(dentures?|braces|aligners?|invisalign|retainers?|night ?guard|mouth ?guard)\b/.test(t),
   },
 ];
 

@@ -56,6 +56,10 @@ import {
   zonedToUtc,
 } from '../scheduling.ts';
 import { INTENTS, SOCIAL_INTENTS } from './intents.ts';
+import { decompose, isSymptom } from './decompose.ts';
+import { PROFILE_NOTES, learnProfile, type PatientProfile, type ProfileFact } from './profile.ts';
+import { GOALS, SUPERLATIVE, WHEN_DONE, comparedAttribute, describeSpan, finishWindow, monthTarget, monthsIn, percentOf, perItem, plural, quantityOf, yearsIn, type Attribute, type Span } from './reasoning.ts';
+import { PLAIN, explainTerms } from '../knowledge/plain.ts';
 import { checkSafety, isDiagnosisRequest, isMedicationQuestion, type SafetyLevel, type SafetyMatch } from './safety.ts';
 
 // ---------------------------------------------------------------- types
@@ -168,10 +172,18 @@ export interface ChatState {
   lastQuestion?: { text: string; subject?: string; subjectKind?: 'service' | 'day'; kind: string };
   /** A dentist the visitor asked for ("book me with Dr. Okafor"). */
   dentist?: string;
+  /** What the patient has told us about themselves ("I'm pregnant", "I don't have insurance"). */
+  profile?: PatientProfile;
+  /** Personal notes already given ("pregnant:Teeth whitening"), so each is said once. */
+  notes?: string[];
+  /** The last knowledge answer, for "tell me more", "explain that more simply" and "that didn't answer my question". */
+  lastAnswer?: { articleId: string; question: string; said: string[] };
+  /** Already asked what they meant after "that didn't answer my question". */
+  retried?: boolean;
 }
 
 export function newChatState(): ChatState {
-  return { turn: 0, visitorMessages: 0, contact: {}, topics: [], signals: {}, misses: 0, contactAsks: 0, said: [] };
+  return { turn: 0, visitorMessages: 0, contact: {}, topics: [], signals: {}, misses: 0, contactAsks: 0, said: [], profile: {} };
 }
 
 export interface TurnEvents {
@@ -212,6 +224,8 @@ interface Turn {
   offeredSlots?: boolean;
   /** Service to name in the booking prompt: a string, null for a generic prompt, undefined to use the visitor's interest. */
   ctaService?: string | null;
+  /** Facts about the patient learned from this message. */
+  learned?: ProfileFact[];
 }
 
 type Ctx = SkillContext<Turn, Article>;
@@ -259,7 +273,7 @@ const COST_TERMS = new Set(
 const BROAD_NAME = new Set(['gum', 'dentistry'].flatMap((w) => terms(w)));
 
 const GENERIC_TITLE = new Set(
-  ['tooth', 'teeth', 'dental', 'treatment', 'care', 'option', 'visit', 'your', 'home', 'follow', 'after', 'up', 'check', 'surgery', 'and']
+  ['tooth', 'teeth', 'dental', 'treatment', 'care', 'option', 'visit', 'your', 'home', 'follow', 'after', 'up', 'check', 'surgery', 'and', 'smile']
     .flatMap((w) => terms(w))
 );
 
@@ -294,7 +308,43 @@ const BOOKING_WORDS =
   /\b(?:book\w*|appointments?|appt|schedul\w*|slots?|availab\w*|openings?|come in|get in|fit me in|be seen|see (?:the|a) (?:dentist|doctor|hygienist)|visit|consult\w*|reserve)\b/i;
 const AFTER_PROCEDURE =
   /\bafter (?:the |my |a |an |getting |having |i get |i have |i've had )?(?:\w+ )?(?:surgery|procedure|treatment|extraction|removal|operation|filling|crown|implants?|whitening|root canal|braces|bonding|veneers?|cleaning|visit|appointment|wisdom teeth)\b/i;
+/** "Can you see me this week?", "can she come in tomorrow?". */
+const BOOK_REQUEST =
+  /\b(?:can|could|would) (?:you|u) (?:see|fit|squeeze) (?:me|her|him|us|them|my \w+)(?: in)?\b|\b(?:can|could) (?:i|she|he|we|they|my \w+) (?:come in|be seen|get in)\b/i;
+
+/** "Tell me more", "go on", "what else should I know?". */
+const MORE_INFO =
+  /^(?:(?:ok(?:ay)?|cool|great|thanks|and|so|hmm|yes|yeah|interesting)[,!.\s]+)?(?:(?:can|could) you )?(?:tell me (?:a bit |a little )?more(?: about (?:it|that|this|them))?|more (?:info|information|details?)|go on|continue|keep going|what else(?: should i know| is there(?: to know)?)?|anything else (?:i should|to) know(?: about (?:it|that|this))?|elaborate|explain more|more please|say more)[\s?.!]*$/i;
+/** "Can you explain that more simply?", "what does that mean?". */
+const SIMPLER =
+  /\b(?:explain (?:that|it|this)? ?(?:more |a bit )?simpl[ey]|(?:in|with) (?:simple|simpler|plain|layman'?s?|easy|everyday) (?:terms|words|english|language)|simpler|i (?:don'?t|do not) (?:understand|get it)|what does (?:that|this|it) mean|eli5|too (?:complicated|technical|confusing)|dumb it down|break it down|layman)\b/i;
+/** "That didn't answer my question." */
+const RETRY =
+  /\b(?:(?:that|this|it|you) (?:didn'?t|did not|doesn'?t|does not|still didn'?t) (?:really )?answer|(?:that'?s|that is|it'?s|this is) not what i (?:asked|meant|wanted)|wrong answer|(?:not|didn'?t) answer(?:ed)? my question|i asked about|you misunderstood|that'?s not my question)\b/i;
+/** "What's your name?", "who are you?". */
+const IDENTITY = /\b(?:what(?:'s| is) your name|who are you|what are you called|what (?:should|do) i call you|do you have a name|who am i (?:talking|speaking|chatting) (?:to|with))\b/i;
+
+/** "Can I get…", "is it safe for me to…": asking whether a treatment suits them. */
+const CAN_I = /\b(?:can|could|may|should) i (?:still )?(?:get|have|do|go for|start|use)\b|\bis it (?:safe|ok|okay|alright|fine) (?:to|for me)\b/i;
 const DAY_WORD = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri|sat(?:ur)?|sun)(?:day)?s?\b|\b(?:today|tomorrow|tonight|weekends?)\b/i;
+
+/** One of a treatment ("your share for a crown"). */
+const ONE_OF: Record<string, string> = {
+  'Dental implants': 'an implant',
+  'Porcelain veneers': 'a veneer',
+  Crowns: 'a crown',
+  Bridges: 'a bridge',
+  Dentures: 'a denture',
+  Fillings: 'a filling',
+  'Root canal treatment': 'a root canal',
+  'Tooth extraction': 'an extraction',
+  'Inlays and onlays': 'an inlay or onlay',
+  Sealants: 'a sealant',
+  'Night guard': 'a night guard',
+  'Sports mouthguard': 'a sports mouthguard',
+  'Check-up and cleaning': 'a check-up and cleaning',
+  'Clear aligners': 'clear aligner treatment',
+};
 
 /** How to say "we offer X" naturally for the library's services. */
 const OFFER_PHRASES: Record<string, string> = {
@@ -404,14 +454,26 @@ export class Receptionist {
     const turn: Turn = { chat, port, now, events: {}, sources: [], captured: {} };
 
     const parts: { reply: ChatReply; kind: string; skill: string; u: Understanding<Article> }[] = [];
-    for (const part of this.split(text.slice(0, 1000))) {
+    const pieces = this.split(text.slice(0, 1000));
+    // "…it wakes me up at night. I'm nervous… can you see me this week?": the visit is for the problem.
+    let problem: string | undefined;
+    for (const [i, part] of pieces.entries()) {
+      // After an urgent problem the team calls back first, so a booking request in the same message waits.
+      if (turn.safety?.level === 'URGENT' && this.isBookingRequest(part)) continue;
+      if (i > 0 && pieces.length > 2 && isSymptom(pieces[0]) && this.isBookingRequest(part)) {
+        chat.service = problem;
+        chat.bookingService = undefined;
+      }
       const question = this.resolveFollowUp(part, chat);
       turn.kind = undefined;
+      turn.ctaService = undefined;
       const result = await this.assistant.reply(question, turn);
+      if (i === 0) problem = turn.ctaService ?? undefined;
       const kind = turn.kind ?? result.skill;
       parts.push({ reply: result.reply as ChatReply, kind, skill: result.skill, u: result.understanding });
       this.remember(chat, result.understanding, kind);
-      if (turn.safety || turn.events.optOut) break;
+      // A possible medical emergency or an opt-out ends the turn.
+      if (turn.events.optOut || turn.safety?.level === 'ER') break;
     }
 
     const last = parts[parts.length - 1];
@@ -438,11 +500,23 @@ export class Receptionist {
   // ---------------------------------------------------------------- conversation
 
   /** Several questions in one message are answered one by one (booking last, so the times end the reply). */
+  private isBookingRequest(text: string): boolean {
+    return pickIntent(classifier.classify(expandShorthand(text)), 0.45)?.intent === 'book' || BOOK_REQUEST.test(text);
+  }
+
   private split(message: string): string[] {
+    const booking = (p: string) => this.isBookingRequest(p);
+    // A long story with several asks: every ask answered, the symptom first so the safety rules see it.
+    const story = decompose(message);
+    if (story && checkSafety(message)?.level !== 'ER') {
+      const [head, ...rest] = story;
+      const asks = isSymptom(head) ? rest : story;
+      const ordered = [...asks.filter((p) => !booking(p)), ...asks.filter(booking)];
+      return isSymptom(head) ? [head, ...ordered] : ordered;
+    }
     if (checkSafety(message)) return [message];
     const parts = splitQuestions(message);
     if (parts.length < 2) return parts;
-    const booking = (p: string) => pickIntent(classifier.classify(expandShorthand(p)), 0.45)?.intent === 'book';
     return [...parts.filter((p) => !booking(p)), ...parts.filter(booking)];
   }
 
@@ -503,8 +577,11 @@ export class Receptionist {
       if (r.ui?.actions) ui.actions = [...(ui.actions ?? []), ...r.ui.actions.filter((a) => !ui.actions?.some((b) => b.href === a.href))];
     }
     const withSuggestions = [...replies].reverse().find((r) => r.suggestions?.length);
+    // Times already on offer make an earlier "shall I find you a time?" redundant.
+    const offersTimes = replies.some((r) => r.ui?.slots?.length);
+    const tidy = (r: ChatReply) => (offersTimes && !r.ui?.slots ? r.text.replace(/\s*Would you like me to find (?:you )?(?:the earliest available appointment|a time)\?/g, '') : r.text);
     return {
-      text: replies.map((r) => fresh(r.text)).filter(Boolean).join('\n\n'),
+      text: replies.map((r) => fresh(tidy(r))).filter(Boolean).join('\n\n'),
       suggestions: withSuggestions?.suggestions,
       ui: Object.keys(ui).length ? ui : undefined,
     };
@@ -521,6 +598,8 @@ export class Receptionist {
       { name: 'awaiting', run: (c) => this.awaiting(c) },
       { name: 'volunteered', run: (c) => this.volunteered(c) },
       { name: 'introduce', run: (c) => this.introduce(c) },
+      { name: 'conversation', run: (c) => this.conversation(c) },
+      { name: 'reasoning', run: (c) => this.reasoning(c) },
       { name: 'intent', run: (c) => this.byIntent(c) },
       { name: 'knowledge', run: (c) => this.knowledge(c) },
       { name: 'fallback', run: (c) => this.fallback(c) },
@@ -557,6 +636,7 @@ export class Receptionist {
     const service = u.values.service?.[0];
     if (service) chat.service = service;
     if (u.date) chat.signals.preferredDate = u.date.date;
+    t.learned = learnProfile((chat.profile ??= {}), u.text);
   }
 
   private safety(c: Ctx): ChatReply | undefined {
@@ -789,6 +869,15 @@ export class Receptionist {
     if ((!p || SOCIAL_INTENTS.has(p.intent) || p.intent === 'procedure_info') && (c.u.date || c.u.time?.time || soon) && WISH.test(text) && !c.u.question) {
       return this.startBooking(c, service);
     }
+    // "Can you see me this week?" (but not "can you see me if I don't have insurance?").
+    if (BOOK_REQUEST.test(text) && (c.u.date || c.u.time?.time || soon || /\b(?:me|her|him|us|them|my \w+)(?: in)?\s*[?.!]*$/i.test(text))) {
+      return this.startBooking(c, service);
+    }
+    // "Can you still see me if I don't have insurance?"
+    if (chat.profile?.uninsured && t.learned?.includes('uninsured') && !service && /\?\s*$|^(?:can|could|do|does|will|would|is|are)\b/i.test(text) && !/\b(?:how much|cost|price|fee)\b/i.test(text)) {
+      chat.signals.insurance = true;
+      return this.uninsuredReply(c, true);
+    }
     if (!p) return undefined;
     switch (p.intent) {
       case 'book': {
@@ -837,6 +926,8 @@ export class Receptionist {
         return this.policyReply(c, 'payment-and-financing', 'payment and financing', 'financing');
       case 'insurance': {
         chat.signals.insurance = true;
+        // "I don't have insurance": what they can do without it, not which plans we take.
+        if (chat.profile?.uninsured && t.learned?.includes('uninsured')) return this.uninsuredReply(c);
         let reply = this.policyReply(c, 'insurance', 'insurance', 'insurance');
         // "Does Medicare cover dental?": general insurance facts answer what the clinic's own policy doesn't.
         const general = this.generalFact(c, 'dental-insurance-basics', reply.text);
@@ -857,6 +948,8 @@ export class Receptionist {
       case 'human':
         return this.handoff(c);
       case 'about_bot':
+        // "I hate my smile, what can you do?" is about their smile, not about the assistant.
+        if (service || this.strongHit(c.u.knowledge) || /\b(?:my|our) (?:smile|teeth|tooth|gums?|bite|jaw)\b/i.test(text)) return undefined;
         t.kind = 'about';
         return {
           text: `I'm ${this.clinic.name}'s virtual assistant — an automated helper, not a person. I can answer questions about treatments, costs, insurance and opening hours, and request appointments for you. I can't diagnose or give medical advice; for that you'll need an exam with the dentist. If you'd like to talk to a person, I can have the team contact you.`,
@@ -951,6 +1044,291 @@ export class Receptionist {
     }
   }
 
+  // ---------------------------------------------------------------- conversation
+
+  /** "Tell me more", "explain that more simply", "that didn't answer my question", "what's your name?". */
+  private conversation(c: Ctx): ChatReply | undefined {
+    const t = c.state;
+    const chat = t.chat;
+    const text = c.text.trim();
+    if (IDENTITY.test(text)) {
+      t.kind = 'smalltalk';
+      return {
+        text: `I'm the virtual assistant for ${this.clinic.name}. I can answer questions about treatments, prices, insurance and opening hours, and book appointments for you. What can I help with?`,
+        suggestions: ['Book an appointment', ...this.topServices(2)],
+      };
+    }
+    const last = chat.lastAnswer;
+    const doc = last && this.index.get(last.articleId);
+    const article = doc?.data;
+    if (!doc || !article) return undefined;
+    if (MORE_INFO.test(text)) {
+      t.kind = 'knowledge';
+      this.use(t, article);
+      t.ctaService = article.service && article.service !== 'Emergency visit' ? article.service : null;
+      const said = new Set(chat.said);
+      const next = this.reader.sentencesOf(doc).filter((s) => !said.has(s.key));
+      if (!next.length) {
+        return { text: `That's everything I have on ${lower(article.title)} — the dentist can go into more detail at a consultation. Is there anything else you'd like to know?` };
+      }
+      const picked: typeof next = [];
+      for (const s of next) {
+        if (picked.length >= 3 || picked.reduce((n, x) => n + x.text.length, 0) + s.text.length > 420) break;
+        picked.push(s);
+      }
+      for (const s of picked) chat.said = [...(chat.said ?? []), s.key].slice(-40);
+      chat.lastAnswer = { ...last, said: [...last.said, ...picked.map((s) => s.key)] };
+      return { text: picked.map((s) => s.text).join(' ') };
+    }
+    if (SIMPLER.test(text)) {
+      t.kind = 'knowledge';
+      this.use(t, article);
+      const plain = PLAIN[article.slug];
+      if (plain) return { text: `In plain terms: ${plain}` };
+      const lastText = this.reader
+        .sentencesOf(doc)
+        .filter((s) => last.said.includes(s.key))
+        .map((s) => s.text)
+        .join(' ');
+      const words = explainTerms(lastText || article.summary);
+      if (words.length) return { text: `Here's what those words mean: ${words.join('; ')}.` };
+      return { text: `In short: ${article.summary.split(/(?<=[.!?])\s/)[0]}` };
+    }
+    if (RETRY.test(text)) {
+      // About a treatment, another article's fact is no answer ("how long do veneers last?" -> bonding), so
+      // ask what they wanted to know (below); otherwise look again, away from the article that missed.
+      const service = article.service && article.service !== 'Emergency visit' ? article.service : undefined;
+      const retry = service
+        ? undefined
+        : this.reader.answer(last.question, { exclude: new Set(chat.said), boost: (d) => (d.id === article.id ? -3 : 0), candidates: 6 });
+      if (retry && retry.doc.id !== article.id && retry.confidence >= 0.4) {
+        t.kind = 'knowledge';
+        const a = retry.doc.data!;
+        this.use(t, a);
+        t.ctaService = a.service && a.service !== 'Emergency visit' ? a.service : null;
+        for (const s of retry.sentences) chat.said = [...(chat.said ?? []), s.key].slice(-40);
+        chat.lastAnswer = { articleId: a.id, question: last.question, said: retry.sentences.map((s) => s.key) };
+        return { text: `Sorry about that — let me try again. ${retry.sentences.map((s) => s.text).join(' ')}` };
+      }
+      t.kind = 'complaint';
+      t.unanswered = true;
+      // About a treatment: ask what they wanted to know before handing it to the team.
+      if (service && !chat.retried) {
+        chat.retried = true;
+        const name = service.toLowerCase();
+        return {
+          text: `Sorry about that. To make sure I get it right, what would you like to know about ${name}? For example, the cost, how long it takes, whether it hurts, or how long it lasts.`,
+          suggestions: [`How much is ${name}?`, 'How long does it take?', 'Does it hurt?', 'How long does it last?'],
+        };
+      }
+      this.offer(chat, 'callback');
+      return {
+        text: "Sorry — I don't have a better answer to that one, and I'd rather not guess. Would you like someone from the team to get back to you about it?",
+        suggestions: ['Yes, ask the team', 'No thanks'],
+      };
+    }
+    return undefined;
+  }
+
+  // ---------------------------------------------------------------- reasoning
+
+  /** Questions that need a little arithmetic or a comparison of facts, answered from the clinic's prices and the library. */
+  private reasoning(c: Ctx): ChatReply | Promise<ChatReply> | undefined {
+    const t = c.state;
+    const chat = t.chat;
+    const text = c.text;
+    const services = (c.u.values.service ?? []).filter((s) => s !== 'Emergency visit');
+    const compared = comparedAttribute(text);
+    if (compared && services.length >= 2) return this.compareBy(c, services[0], services[1], compared.attribute);
+    const goal = GOALS.find((g) => g.re.test(text));
+    if (goal && compared && (SUPERLATIVE.test(text) || /\b(?:way|option|treatment|choice)s?\b/i.test(text))) {
+      const best = this.bestFor(c, goal, compared.attribute);
+      if (best) return best;
+    }
+    const service = services[0] ?? (chat.service !== 'Emergency visit' ? chat.service : undefined);
+    if (WHEN_DONE.test(text) && service) {
+      const done = this.whenDone(c, service);
+      if (done) return done;
+    }
+    const asksCost = c.u.aspects.includes('cost') || /\bhow much\b|\bcosts?\b|\bprice\b|\bpay\b/i.test(text);
+    const qty = quantityOf(text);
+    if (qty && asksCost && service) {
+      const total = this.priceTimes(c, service, qty.count, qty.item);
+      if (total) return total;
+    }
+    const pct = percentOf(text) ?? (/\b(?:insurance|plan|covers?)\b/i.test(text) ? chat.profile?.coveragePercent : undefined);
+    if (pct !== undefined && asksCost && service) {
+      const share = this.insuranceShare(c, service, pct);
+      if (share) return share;
+    }
+    return undefined;
+  }
+
+  /** The library's sentence about one attribute of a treatment, with its numbers. */
+  private attributeOf(service: string, attribute: Attribute): { sentence: string; span: Span } | undefined {
+    const a = this.mainArticle(service);
+    if (!a) return undefined;
+    if (attribute === 'cost') {
+      if (a.priceMin == null && a.priceMax == null) return undefined;
+      const min = a.priceMin ?? a.priceMax!;
+      return { sentence: this.priceRange(a)!, span: { min, max: a.priceMax ?? min } };
+    }
+    const doc = this.index.get(a.id);
+    if (!doc) return undefined;
+    const aspect = attribute === 'longevity' ? 'longevity' : 'duration';
+    for (const s of this.reader.sentencesOf(doc)) {
+      if (!s.aspects.includes(aspect)) continue;
+      const span = attribute === 'longevity' ? yearsIn(s.text) : monthsIn(s.text);
+      if (span && (attribute === 'longevity' || span.max >= 0.5)) return { sentence: s.text, span };
+    }
+    return undefined;
+  }
+
+  /** "Which lasts longer, a bridge or an implant?" — compared on that one attribute, with the numbers. */
+  private compareBy(c: Ctx, a: string, b: string, attribute: Attribute): ChatReply {
+    const t = c.state;
+    const x = this.attributeOf(a, attribute);
+    const y = this.attributeOf(b, attribute);
+    if (!x || !y) return this.compare(c, a, b);
+    t.kind = 'compare';
+    for (const s of [a, b]) {
+      const main = this.mainArticle(s);
+      if (main) this.use(t, main);
+    }
+    const mid = (s: Span) => (s.min + s.max) / 2;
+    const value = (v: { sentence: string; span: Span }) =>
+      attribute === 'cost' ? v.sentence.replace(/\s*\(.*\)$/, '') : describeSpan(v.span, attribute === 'longevity' ? 'years' : 'months');
+    const [first, second] = (attribute === 'longevity' ? mid(x.span) >= mid(y.span) : mid(x.span) <= mid(y.span)) ? [[a, x], [b, y]] as const : [[b, y], [a, x]] as const;
+    const same = mid(x.span) === mid(y.span);
+    const be = (s: string) => (/s$/i.test(s) ? 'are' : 'is');
+    const verb =
+      attribute === 'longevity' ? { lead: 'usually last longer', fact: 'can last', other: 'commonly last' } : attribute === 'duration' ? { lead: 'usually quicker', fact: 'often takes', other: 'takes' } : { lead: 'usually cost less here', fact: 'is', other: 'is' };
+    let verdict: string;
+    if (attribute === 'longevity') {
+      verdict = same
+        ? `${a} and ${lower(b)} usually last about as long as each other: ${value(x)}.`
+        : `${first[0]} usually last${/s$/i.test(first[0]) ? '' : 's'} longer: with good care ${/s$/i.test(first[0]) ? 'they' : 'it'} can last ${value(first[1]) === 'decades' ? 'for decades' : value(first[1])}, while ${lower(second[0])} commonly last${/s$/i.test(second[0]) ? '' : 's'} ${value(second[1])}.`;
+    } else if (attribute === 'duration') {
+      verdict = same
+        ? `${a} and ${lower(b)} usually take about as long as each other: ${value(x)}.`
+        : `${first[0]} ${be(first[0])} usually quicker: treatment often takes ${value(first[1])}, compared with ${value(second[1])} for ${lower(second[0])}.`;
+    } else {
+      verdict = same
+        ? `${a} and ${lower(b)} cost about the same here.`
+        : `${first[0]} usually cost${/s$/i.test(first[0]) ? '' : 's'} less here (${value(first[1])}) than ${lower(second[0])} (${value(second[1])}).`;
+    }
+    void verb;
+    t.ctaService = null;
+    return { text: `${verdict} The dentist can tell you which suits your teeth best at a consultation.` };
+  }
+
+  /** "What's the cheapest way to replace a missing tooth?" — the options ranked on that attribute. */
+  private bestFor(c: Ctx, goal: (typeof GOALS)[number], attribute: Attribute): ChatReply | undefined {
+    const t = c.state;
+    const ranked = goal.services
+      .filter((s) => this.byService.has(s))
+      .map((s) => ({ service: s, value: this.attributeOf(s, attribute) }))
+      .filter((r): r is { service: string; value: { sentence: string; span: Span } } => !!r.value);
+    if (ranked.length < 2) return undefined;
+    const mid = (s: Span) => (s.min + s.max) / 2;
+    ranked.sort((p, q) => (attribute === 'longevity' ? mid(q.value.span) - mid(p.value.span) : mid(p.value.span) - mid(q.value.span)));
+    t.kind = 'compare';
+    for (const r of ranked) {
+      const main = this.mainArticle(r.service);
+      if (main) this.use(t, main);
+    }
+    const [first, ...rest] = ranked;
+    const what = attribute === 'cost' ? 'the most affordable' : attribute === 'longevity' ? 'the longest-lasting' : 'the quickest';
+    const detail = (r: (typeof ranked)[number]) =>
+      attribute === 'cost' ? ` (${r.value.sentence.replace(/\s*\(.*\)$/, '')})` : ` (${describeSpan(r.value.span, attribute === 'longevity' ? 'years' : 'months')})`;
+    const parts = [
+      `Of the ways to ${goal.goal} we offer, ${lower(first.service)} ${/s$/i.test(first.service) ? 'are' : 'is'} usually ${what}${detail(first)}, then ${rest
+        .map((r) => `${lower(r.service)}${detail(r)}`)
+        .join(', then ')}.`,
+    ];
+    // The cheapest option is rarely the longest-lasting: say so.
+    if (attribute === 'cost') {
+      const lasting = ranked
+        .map((r) => ({ service: r.service, life: this.attributeOf(r.service, 'longevity') }))
+        .filter((r) => r.life)
+        .sort((p, q) => mid(q.life!.span) - mid(p.life!.span))[0];
+      if (lasting && lasting.service !== first.service) {
+        const life = describeSpan(lasting.life!.span, 'years');
+        parts.push(`${lasting.service} usually last${/s$/i.test(lasting.service) ? '' : 's'} the longest, though: with good care they can last ${life === 'decades' ? 'for decades' : life}.`);
+      }
+    }
+    parts.push('The dentist can recommend the right option for you at a consultation.');
+    t.ctaService = null;
+    return { text: parts.join(' ') };
+  }
+
+  /** "If I start Invisalign now, when would I be done?" */
+  private whenDone(c: Ctx, service: string): ChatReply | undefined {
+    const t = c.state;
+    const took = this.attributeOf(service, 'duration');
+    if (!took || took.span.max < 1) return undefined;
+    const main = this.mainArticle(service);
+    if (main) this.use(t, main);
+    t.kind = 'knowledge';
+    t.ctaService = service;
+    const { from, to } = finishWindow(t.now, took.span, this.clinic.timezone);
+    const window = from === to ? `around ${from}` : `between ${from} and ${to}`;
+    const parts = [took.sentence, `So if you started now, you'd typically be finished ${window}.`];
+    const target = c.u.date?.date ?? monthTarget(c.text, t.now);
+    if (target && /\b(?:by|before|in time for)\b/i.test(c.text)) {
+      const months = (new Date(`${target}T12:00:00Z`).getTime() - t.now.getTime()) / (30.44 * 86_400_000);
+      parts.push(
+        months >= took.span.max
+          ? 'That should leave enough time for most cases.'
+          : months < took.span.min
+            ? "That's sooner than treatment usually takes, so most cases wouldn't be finished by then."
+            : 'That could be tight: whether it works depends on your case.'
+      );
+    }
+    parts.push('The dentist can give you a personal timeline at your consultation.');
+    return { text: parts.join(' ') };
+  }
+
+  /** "How much would 3 veneers cost?" — the per-tooth price times the number of teeth. */
+  private priceTimes(c: Ctx, service: string, count: number, item: string): ChatReply | undefined {
+    const a = this.mainArticle(service);
+    const unit = perItem(a?.priceUnit);
+    if (!a || !unit || (a.priceMin == null && a.priceMax == null)) return undefined;
+    const t = c.state;
+    t.kind = 'price';
+    t.chat.signals.price = true;
+    t.chat.service = service;
+    t.ctaService = service;
+    this.use(t, a);
+    const min = (a.priceMin ?? a.priceMax!) * count;
+    const max = (a.priceMax ?? a.priceMin!) * count;
+    const total = min === max ? money(min) : `${money(min)}–${money(max)}`;
+    const said = /^teeth?$/.test(item) ? plural(unit, count) : item;
+    return {
+      text: `For ${count} ${said}, that would come to roughly ${total} in total, based on our typical ${this.priceRange(a)!.replace(/\s*\(.*\)$/, '')}. Your exact cost depends on your exam and treatment plan.`,
+    };
+  }
+
+  /** "My insurance covers 50%, what would a crown cost me?" */
+  private insuranceShare(c: Ctx, service: string, pct: number): ChatReply | undefined {
+    const a = this.mainArticle(service);
+    if (!a || (a.priceMin == null && a.priceMax == null)) return undefined;
+    const t = c.state;
+    t.kind = 'price';
+    t.chat.signals.price = true;
+    t.chat.signals.insurance = true;
+    t.chat.service = service;
+    t.ctaService = service;
+    this.use(t, a);
+    const share = (n: number) => Math.round((n * (100 - pct)) / 100);
+    const min = share(a.priceMin ?? a.priceMax!);
+    const max = share(a.priceMax ?? a.priceMin!);
+    const yours = min === max ? money(min) : `${money(min)}–${money(max)}`;
+    return {
+      text: `If your plan pays ${pct}%, your share for ${ONE_OF[service] ?? lower(service)} would be roughly ${yours}, based on our typical ${this.priceRange(a)!.replace(/\s*\(.*\)$/, '')}. That's before any deductible or yearly maximum, and plans differ in what they cover, so send us your insurance details and the team can check your exact benefits.`,
+    };
+  }
+
   private knowledge(c: Ctx): ChatReply | undefined {
     const t = c.state;
     const chat = t.chat;
@@ -974,12 +1352,29 @@ export class Receptionist {
     // "I'm terrified of the dentist but need a cleaning": the fear comes first.
     const anxiety = ANXIOUS.test(query) ? this.bySlug.get('dental-anxiety-and-sedation') : undefined;
     if (anxiety) prefer.set(anxiety.id, 2);
+    // "I'm nervous about the dentist." — reassurance and what the team does, not a single fact.
+    const specificFear = /\b(?:needles?|injections?|shots?|drill\w*|gag\w*|pain\w*|hurt\w*|numb\w*|blood|chok\w*|smell|noise|sounds?|claustrophob\w*|x-?rays?)\b/i.test(query);
+    if (anxiety && !specificFear && !c.u.question && !/\?\s*$/.test(query) && services.every((x) => qualifiers.has(x) || x === anxiety.service)) {
+      t.kind = 'knowledge';
+      this.use(t, anxiety);
+      t.ctaService = anxiety.service;
+      const doc = this.index.get(anxiety.id)!;
+      const opening = this.reader.sentencesOf(doc).filter((s) => s.index < 2);
+      for (const s of opening) chat.said = [...(chat.said ?? []), s.key].slice(-40);
+      chat.lastAnswer = { articleId: anxiety.id, question: c.text, said: opening.map((s) => s.key) };
+      return { text: opening.map((s) => s.text).join(' ') };
+    }
     const strong = this.strongHit(c.u.knowledge);
     if (!prefer.size && !strong && !((c.u.knowledge[0]?.coverage ?? 0) >= 0.3)) return undefined;
 
     const topicWords = (c.u.matches.service ?? []).map((m) => m.text);
     const specific = this.isSpecific(query, topicWords);
-    const aspects = c.u.aspects.length ? c.u.aspects : specific ? [] : ['definition'];
+    const aspects = [...(c.u.aspects.length ? c.u.aspects : specific ? [] : ['definition'])];
+    // Earlier in the chat: "I'm pregnant" -> "can I get my teeth whitened?" is asked for a pregnant patient.
+    const profile = chat.profile ?? {};
+    const forThem = c.u.aspects.some((a) => a === 'candidacy' || a === 'safety') || CAN_I.test(query);
+    if (forThem && (profile.pregnant || profile.breastfeeding) && !aspects.includes('pregnancy')) aspects.push('pregnancy');
+    if (forThem && profile.child && !aspects.includes('children')) aspects.push('children');
     // Named treatments narrow the search to their own articles ("will a crown look natural?" is not about implants).
     // "Is fluoride safe for kids?" is about fluoride: who it's for only steers the search, it doesn't limit it.
     const peopleOnly = services.length > 0 && services.every((s) => qualifiers.has(s)) && specific;
@@ -1156,6 +1551,7 @@ export class Receptionist {
       else if (opts.remedy && CAPABILITY.test(c.text) && ans.onAspect) body = `Yes — ${lowerFirst(body)}`;
       parts.push(body);
       for (const s of ans.sentences) chat.said = [...(chat.said ?? []).filter((k) => k !== s.key), s.key].slice(-40);
+      chat.lastAnswer = { articleId: a.id, question: c.text, said: ans.sentences.map((s) => s.key) };
     }
     // "Do you do cleanings on Saturdays?" — answer the day too.
     const weekday = weekdayIn(c.text);
@@ -1409,7 +1805,7 @@ export class Receptionist {
     const range = this.priceRange(a);
     const parts = [
       range
-        ? `At ${this.clinic.name}, the typical cost for ${lower(service)} is ${range}. Your exact cost depends on your exam and treatment plan${COSMETIC.has(service) ? '' : ', and insurance may cover part of it'}.`
+        ? `At ${this.clinic.name}, the typical cost for ${lower(service)} is ${range}. Your exact cost depends on your exam and treatment plan${COSMETIC.has(service) || t.chat.profile?.uninsured ? '' : ', and insurance may cover part of it'}.`
         : `The cost of ${lower(service)} depends on your individual case, so ${this.clinic.name} gives you an exact quote after an exam rather than guessing.`,
     ];
     const financing = this.bySlug.get('payment-and-financing');
@@ -1418,6 +1814,36 @@ export class Receptionist {
       if (line) parts.push(line);
     }
     return { text: parts.join(' ') };
+  }
+
+  /** No dental insurance: the clinic's own options (membership plan, payment plans), or an honest hand-off. */
+  private uninsuredReply(c: Ctx, asked = false): ChatReply {
+    const opening = asked ? 'Yes — you’re very welcome without insurance.' : 'No problem — lots of patients don’t have dental insurance.';
+    const t = c.state;
+    t.kind = 'insurance';
+    const lines: string[] = [];
+    const wanted: [string, RegExp, number][] = [
+      ['insurance', /\b(?:don['’]?t have|without|no) (?:dental )?insurance\b|\buninsured\b|\bmembership\b|\bself[- ]pay\b/i, 1],
+      ['payment-and-financing', /\bpayment plans?\b|\bfinanc|\bcash\b|\bcards?\b|\bHSA\b/i, 2],
+    ];
+    for (const [slug, re, max] of wanted) {
+      const a = this.bySlug.get(slug);
+      const doc = a && this.index.get(a.id);
+      if (!a || !doc) continue;
+      const found = this.reader.sentencesOf(doc).filter((x) => re.test(x.text) && !lines.includes(x.text)).slice(0, max);
+      if (found.length) {
+        t.sources.push(a);
+        lines.push(...found.map((x) => x.text));
+      }
+    }
+    if (!lines.length) {
+      this.offer(t.chat, 'callback');
+      return {
+        text: `${opening} I don't have this clinic's self-pay options on hand, so I can ask the team to get back to you with them. Would you like that?`,
+        suggestions: ['Yes, ask the team', 'No thanks'],
+      };
+    }
+    return { text: `${opening} ${lines.join(' ')}` };
   }
 
   /** A sentence from a general article that answers a word of the question the reply so far doesn't touch. */
@@ -1845,6 +2271,9 @@ export class Receptionist {
       chat.lastReminderTurn = chat.turn;
     }
 
+    const note = this.personalNote(t, text);
+    if (note) text += ` ${note}`;
+
     const ctaKinds = ['knowledge', 'capability', 'compare', 'price', 'insurance', 'financing', 'new_patient', 'services'];
     const ctaDue = chat.turn - (chat.lastCtaTurn ?? -10) >= 3;
     if (ctaKinds.includes(t.kind ?? '') && !chat.appointment && !chat.awaiting && !chat.pendingOffer && ctaDue && !t.safety && !chat.optedOut) {
@@ -1869,6 +2298,37 @@ export class Receptionist {
   }
 
   // ---------------------------------------------------------------- utilities
+
+  /**
+   * What the patient told us about themselves that matters for this answer, said once:
+   * whitening while pregnant, smoking and implants, prices without insurance.
+   */
+  private personalNote(t: Turn, reply: string): string | undefined {
+    const chat = t.chat;
+    const profile = chat.profile ?? {};
+    const kind = t.kind ?? '';
+    if (!Object.values(profile).some(Boolean)) return undefined;
+    const answered = ['knowledge', 'capability', 'compare', 'price', 'new_patient', 'insurance', 'offer_slots'].includes(kind) || kind.startsWith('safety_');
+    if (!answered || kind === 'safety_er') return undefined;
+    const service = t.sources.find((a) => a.service)?.service ?? (typeof t.ctaService === 'string' ? t.ctaService : undefined) ?? chat.service;
+    for (const note of PROFILE_NOTES) {
+      if (!profile[note.fact] || note.covered.test(reply)) continue;
+      if (note.kinds ? !note.kinds.includes(kind) : !service || kind === 'insurance') continue;
+      if (kind.startsWith('safety_') && note.fact !== 'pregnant') continue;
+      if (note.services && (!service || !note.services.includes(service))) continue;
+      const key = `${note.fact}:${note.query(service ?? '')}`;
+      if (chat.notes?.includes(key) || t.sources.some((a) => a.slug === note.slug)) continue;
+      const article = this.bySlug.get(note.slug);
+      if (!article) continue;
+      const sentence = this.reader.answer(note.query(service ?? ''), { within: [article.id], max: 1, exclude: new Set(chat.said) })?.sentences[0];
+      if (!sentence || chat.said?.includes(sentence.key)) continue;
+      chat.notes = [...(chat.notes ?? []), key];
+      chat.said = [...(chat.said ?? []), sentence.key].slice(-40);
+      t.sources.push(article);
+      return /^if you\b/i.test(sentence.text) ? sentence.text : `${note.lead} ${lowerFirst(sentence.text)}`;
+    }
+    return undefined;
+  }
 
   /** Remember what a "yes" in the next few turns means. */
   private offer(chat: ChatState, kind: NonNullable<ChatState['pendingOffer']>): void {
