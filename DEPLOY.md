@@ -15,6 +15,7 @@ database. Migrations run automatically when the server starts.
    | --- | --- |
    | `PUBLIC_BASE_URL` | the service URL, e.g. `https://leadflow.onrender.com` (or your custom domain) |
    | `RESEND_API_KEY` / `EMAIL_FROM` | optional, see *Email* below |
+   | `ANTHROPIC_API_KEY` | optional, see *Claude answers* below |
    | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | optional, see *Billing* below |
 
 4. Deploy, then open `https://<your-url>/api/health` — you should see `"status":"ok"` and `"database":"ok"`.
@@ -50,6 +51,25 @@ dashboard (**Emails**). To actually send them:
 3. In the dashboard, set **Settings → Clinic → Send new-lead alerts to**.
 
 Every patient email includes a one-click unsubscribe link (`/u/<token>`).
+
+## Claude answers (optional)
+
+Set `ANTHROPIC_API_KEY` and open questions (about treatments, comparisons, follow-ups, and questions the
+built-in assistant can't answer) are answered by Claude from each clinic's own settings and knowledge
+base. Emergencies and safety advice, booking, prices, opening hours and opt-outs always use the
+built-in assistant, which also answers whenever Claude is slow (`CLAUDE_TIMEOUT_MS`, default 15 s),
+declines or fails. Names, emails and phone numbers are removed from what is sent.
+
+| Variable | Default | |
+| --- | --- | --- |
+| `ANTHROPIC_MODEL` | `claude-opus-5-5` | `claude-sonnet-5-5` or `claude-haiku-5-5` cost less per answer |
+| `ANTHROPIC_EFFORT` | `low` | `medium` / `high` think longer and cost more |
+| `CLAUDE_DAILY_LIMIT` | `500` | Claude answers per clinic per 24 hours; after that the built-in assistant answers |
+
+Each clinic can turn it off in **Settings → Assistant**. **AI Center → Workload** shows how many
+answers Claude wrote, the tokens used (most of the prompt is read from Anthropic's prompt cache)
+and the estimated cost. Sending patients' questions to Anthropic is a change to where patient data
+goes: check it fits your privacy notices before turning it on.
 
 ## Billing (optional)
 

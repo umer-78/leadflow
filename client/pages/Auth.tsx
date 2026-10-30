@@ -54,7 +54,7 @@ export function AuthPage({ onSignedIn }: { onSignedIn: () => void }) {
             </li>
             <li className="flex gap-3">
               <ShieldCheck className="mt-0.5 flex-none" size={20} />
-              <span>Spots emergencies, never diagnoses, and runs on your server with no third-party AI.</span>
+              <span>Spots emergencies, never diagnoses, and runs on your server, with Claude answers as an option.</span>
             </li>
           </ul>
         </div>

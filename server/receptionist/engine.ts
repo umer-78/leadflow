@@ -139,6 +139,8 @@ export interface ReplyUi {
 
 export interface ChatReply extends Reply {
   ui?: ReplyUi;
+  /** The booking question appended to the answer ("Would you like to book…?"), when there is one. */
+  cta?: string;
 }
 
 export interface ChatState {
@@ -429,6 +431,25 @@ export class Receptionist {
     this.assistant = new Assistant<Turn, Article>(brain, this.skills(), {
       context: (t) => ({ expectingName: t.chat.awaiting === 'contact', timeZone: clinic.timezone, now: t.now }),
     });
+  }
+
+  /** Published, filled-in articles (what answers may be drawn from), in a stable order. */
+  catalog(): Article[] {
+    return [...this.bySlug.values()].sort((a, b) => a.slug.localeCompare(b.slug));
+  }
+
+  /** The articles behind an answer (by slug) plus the best matches for the question, at most `limit`. */
+  articlesFor(question: string, slugs: string[], limit = 4): Article[] {
+    const out = new Map<string, Article>();
+    for (const slug of slugs) {
+      const a = this.bySlug.get(slug);
+      if (a && out.size < limit) out.set(a.slug, a);
+    }
+    for (const hit of this.index.search(question, { limit: limit * 2 })) {
+      const a = hit.doc.data;
+      if (a && out.size < limit && !out.has(a.slug)) out.set(a.slug, a);
+    }
+    return [...out.values()];
   }
 
   /** Typical case value of a service (for lead scoring), if known. */
@@ -2278,10 +2299,12 @@ export class Receptionist {
 
     const ctaKinds = ['knowledge', 'capability', 'compare', 'price', 'insurance', 'financing', 'new_patient', 'services'];
     const ctaDue = chat.turn - (chat.lastCtaTurn ?? -10) >= 3;
+    let cta: string | undefined;
     if (ctaKinds.includes(t.kind ?? '') && !chat.appointment && !chat.awaiting && !chat.pendingOffer && ctaDue && !t.safety && !chat.optedOut) {
       const interest = chat.service && chat.service !== 'Emergency visit' ? chat.service : undefined;
       const service = t.ctaService === undefined ? interest : (t.ctaService ?? undefined);
-      text += service ? ` Would you like to book ${this.servicePhrase(service)}?` : ' Would you like to book a visit?';
+      cta = service ? `Would you like to book ${this.servicePhrase(service)}?` : 'Would you like to book a visit?';
+      text += ` ${cta}`;
       this.offer(chat, 'booking');
       chat.bookingService = service ?? (t.kind === 'new_patient' ? 'New patient exam' : 'Consultation');
       chat.lastCtaTurn = chat.turn;
@@ -2296,6 +2319,7 @@ export class Receptionist {
       suggestions: suggestions.length ? suggestions.slice(0, 4) : undefined,
       data: reply.data,
       ui: Object.keys(ui).length ? ui : undefined,
+      cta,
     };
   }
 

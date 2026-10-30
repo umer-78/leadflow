@@ -3,7 +3,7 @@
  * persisted. Each turn runs in a transaction with the conversation row locked,
  * so concurrent messages can't corrupt the dialogue state or double-book.
  */
-import { and, asc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
 import { formatPhone } from '../packages/localbrain/src/index.ts';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
@@ -31,6 +31,7 @@ import {
   type Queryable,
 } from './leads.ts';
 import { newManageToken, scheduleReminders } from './automations.ts';
+import { draftOf, eligible, systemPrompt, turnPrompt, withClaudeAnswer, type Answerer, type ClaudeAnswer } from './claude.ts';
 import {
   Receptionist,
   newChatState,
@@ -40,15 +41,73 @@ import {
   type ReplyUi,
   type Slot,
   type SlotPreference,
+  type TurnResult,
 } from './receptionist/engine.ts';
 import { findSlots, formatSlot } from './scheduling.ts';
 
 export interface ChatDeps {
   db: DB;
-  config: Pick<Config, 'publicUrl'>;
+  config: Pick<Config, 'publicUrl'> & { anthropic?: Pick<Config['anthropic'], 'dailyLimit'> };
   /** Called after a turn that queued email, to send it promptly. */
   kick?: () => void;
   now?: () => Date;
+  /** Claude answering mode, when the server has an Anthropic API key. */
+  claude?: Answerer;
+}
+
+// ---------------------------------------------------------------- Claude answers
+
+const systemPrompts = new WeakMap<Receptionist, string>();
+
+/** Claude answers this clinic has had in the last 24 hours (the daily limit counts these). */
+async function claudeAnswersToday(q: Queryable, orgId: string, now: Date): Promise<number> {
+  const [{ n }] = await q
+    .select({ n: count() })
+    .from(messages)
+    .where(and(eq(messages.orgId, orgId), eq(messages.role, 'assistant'), gte(messages.createdAt, new Date(now.getTime() - 86_400_000)), sql`${messages.meta} ? 'llm'`));
+  return n;
+}
+
+/**
+ * Let Claude write this turn's answer, when the server and clinic have Claude
+ * on, the turn is an open question, and the clinic is under its daily limit.
+ * Undefined means the built-in answer stands.
+ */
+export async function claudeTurn(
+  deps: Pick<ChatDeps, 'db' | 'claude' | 'config'>,
+  org: Organization,
+  receptionist: Receptionist,
+  result: TurnResult,
+  question: string,
+  history: { role: string; body: string }[],
+  now: Date
+): Promise<{ reply: ReturnType<typeof withClaudeAnswer>['reply']; state: ChatState; answer: ClaudeAnswer } | undefined> {
+  if (!deps.claude || !org.claudeEnabled || !eligible(result)) return undefined;
+  if ((await claudeAnswersToday(deps.db, org.id, now)) >= (deps.config.anthropic?.dailyLimit ?? 500)) return undefined;
+  let system = systemPrompts.get(receptionist);
+  if (!system) {
+    system = systemPrompt(org, receptionist.catalog());
+    systemPrompts.set(receptionist, system);
+  }
+  const user = turnPrompt({
+    articles: receptionist.articlesFor(question, result.meta.sources.map((s) => s.slug)),
+    history,
+    profile: result.state.profile,
+    draft: draftOf(result.reply),
+    draftAnswered: !result.meta.unanswered,
+    question,
+    now,
+    timezone: org.timezone,
+    name: result.state.contact.name,
+  });
+  const answer = await deps.claude.answer({ system, user });
+  if (!answer) return undefined;
+  return { ...withClaudeAnswer(result, answer), answer };
+}
+
+/** What's stored with an answer Claude wrote (shown in transcripts and counted in the AI Center). */
+function llmMeta(answer: ClaudeAnswer, builtin: string) {
+  return { model: answer.model, ms: answer.ms, answered: answer.answered, usage: answer.usage, builtin: builtin.slice(0, 2000) };
 }
 
 // ---------------------------------------------------------------- receptionists
@@ -199,6 +258,18 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
         .returning();
     }
     const conversation = convo;
+    // The conversation so far, for Claude to read (only when it may be asked).
+    const history =
+      deps.claude && org.claudeEnabled
+        ? (
+            await tx
+              .select({ role: messages.role, body: messages.body })
+              .from(messages)
+              .where(eq(messages.conversationId, conversation.id))
+              .orderBy(desc(messages.createdAt))
+              .limit(6)
+          ).reverse()
+        : [];
     await tx.insert(messages).values({ conversationId: conversation.id, orgId: org.id, role: 'visitor', body: input.message });
 
     const receptionist = await receptionistFor(tx, org);
@@ -253,7 +324,7 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
     };
 
     const result = await receptionist.respond(input.message, state, port, now);
-    await tx.insert(messages).values({
+    const [saved] = await tx.insert(messages).values({
       conversationId: conversation.id,
       orgId: org.id,
       role: 'assistant',
@@ -265,7 +336,7 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
         // Unanswered questions are listed in the dashboard so the clinic can teach the assistant.
         ...(result.meta.unanswered ? { question: input.message.slice(0, 500) } : {}),
       } as Record<string, unknown>,
-    });
+    }).returning({ id: messages.id, meta: messages.meta });
 
     // ---- lead sync
     const contact = result.state.contact;
@@ -335,9 +406,26 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
     return {
       conversationId: conversation.id,
       reply: { text: result.reply.text, suggestions: result.reply.suggestions, ui: result.reply.ui },
+      claude: { result, history, receptionist, messageId: saved.id, meta: saved.meta },
     };
   });
 
   if (queuedEmail) deps.kick?.();
-  return output;
+  const { claude, ...reply } = output;
+  // Claude is asked after the turn is saved, so no database locks are held while it writes.
+  const improved = await claudeTurn(deps, org, claude.receptionist, claude.result, input.message, claude.history, now).catch(() => undefined);
+  if (!improved) return reply;
+  const { answer } = improved;
+  const meta = { ...claude.meta, suggestions: improved.reply.suggestions, ui: improved.reply.ui, unanswered: !answer.answered, llm: llmMeta(answer, claude.result.reply.text) };
+  if (answer.answered) delete (meta as Record<string, unknown>).question;
+  else (meta as Record<string, unknown>).question = input.message.slice(0, 500);
+  await deps.db.update(messages).set({ body: improved.reply.text, meta }).where(eq(messages.id, claude.messageId));
+  if (improved.state.pendingOffer !== claude.result.state.pendingOffer) {
+    // Only if no newer turn has been saved in the meantime.
+    await deps.db
+      .update(conversations)
+      .set({ state: improved.state as unknown as Record<string, unknown> })
+      .where(and(eq(conversations.id, reply.conversationId), sql`(${conversations.state}->>'turn')::int = ${improved.state.turn}`));
+  }
+  return { ...reply, reply: { text: improved.reply.text, suggestions: improved.reply.suggestions, ui: improved.reply.ui } };
 }
