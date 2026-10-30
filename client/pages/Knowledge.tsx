@@ -19,7 +19,7 @@ const CATEGORIES: { key: Category; label: string; tone: Tone }[] = [
 const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c])) as Record<Category, (typeof CATEGORIES)[number]>;
 const isDraft = (a: Article) => /\[[^\]]{3,}\]/.test(a.summary);
 
-export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestion?: string }) {
+export function KnowledgePage({ can, draftQuestion, openId, openImport }: PageProps & { draftQuestion?: string; openId?: string; openImport?: boolean }) {
   const list = useApi<{ items: Article[] }>('/knowledge');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Category | ''>('');
@@ -34,6 +34,21 @@ export function KnowledgePage({ can, draftQuestion }: PageProps & { draftQuestio
       navigate('/knowledge');
     }
   }, [draftQuestion, admin]);
+
+  // Links from the AI Center: "#/knowledge?import=1" and "#/knowledge?edit=<id>".
+  useEffect(() => {
+    if (openImport && admin) {
+      setImporting(true);
+      navigate('/knowledge');
+    }
+  }, [openImport, admin]);
+  useEffect(() => {
+    const article = openId && list.data?.items.find((a) => a.id === openId);
+    if (article) {
+      setEditing(article);
+      navigate('/knowledge');
+    }
+  }, [openId, list.data]);
 
   const items = list.data?.items ?? [];
   const drafts = items.filter((a) => a.category === 'POLICY' && (isDraft(a) || !a.published));

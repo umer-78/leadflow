@@ -883,6 +883,8 @@ export class Receptionist {
       case 'book': {
         // "Do wisdom teeth need to come out?" is not a booking request.
         if (!BOOKING_WORDS.test(text) && !c.u.date && !c.u.time && !(p.confidence >= 0.75 && !c.u.question)) return undefined;
+        // Nor is "can I bring my parrot to the appointment?".
+        if (c.u.question && /\b(?:bring|come with me|accompany)\b/i.test(text) && !BOOKING_WORDS.test(text.replace(/\b(?:appointments?|visits?)\b/gi, ''))) return undefined;
         // Nor is "how long is a veneer appointment?" or "how much is a consultation?".
         const info = c.u.aspects.filter((a) => a !== 'children' && a !== 'candidacy');
         if (c.u.question && info.length && !/\b(?:book|schedule|available|availability|openings?|slots?|come in|get in|fit me in|be seen|earliest)\b/i.test(text)) return undefined;
