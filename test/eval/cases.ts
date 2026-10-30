@@ -314,6 +314,27 @@ export const QA: QaCase[] = [
   { q: 'book me with dr okafor next week', expect: /Dr\. Okafor/, skill: 'offer_slots' },
   { q: 'im scared of needles', expect: /numbing gel/ },
   { q: 'i have a strong gag reflex', expect: /gag reflex/ },
+  // ------------------------------------------------------------ reasoning from the clinic's own prices and the library
+  { q: 'how much would 3 veneers cost', expect: /For 3 veneers.*\$2,850–\$7,500/, skill: 'price' },
+  { q: 'my insurance covers 50%, how much would a crown cost me', expect: /your share for a crown would be roughly \$500–\$900/, skill: 'price' },
+  { q: "what's the cheapest way to replace a missing tooth", expect: /dentures are usually the most affordable.*then bridges.*then dental implants/, skill: 'compare' },
+  { q: 'which lasts longer, an implant or a bridge', expect: /Dental implants usually last longer.*5 to 15 years/, skill: 'compare' },
+  { q: 'which is faster, invisalign or braces', expect: /Clear aligners are usually quicker.*18 to 24 months/, skill: 'compare' },
+  { q: 'if i start invisalign now when will i be done', expect: /finished between April 2027 and April 2028/ },
+  { q: "i'm getting married next june, can i get braces done by then", expect: /most cases wouldn't be finished by then/, source: 'braces' },
+  { q: 'can i get my teeth straight with invisalign before my wedding in march 2028', expect: /could be tight/, source: 'clear-aligners' },
+  // ------------------------------------------------------------ calibrated urgency and long messages
+  { q: "I chipped my front tooth but it doesn't hurt", expect: /isn’t an emergency/, skill: 'safety_soon' },
+  {
+    q: "I've had a throbbing pain on my left side for about a week and it wakes me up at night. I'm really nervous about dentists and I don't have insurance. How much would it cost to get it checked and can you see me this week?",
+    expect: /wakes you at night[\s\S]*\$150–\$300 per visit without insurance[\s\S]*go at your pace[\s\S]*next available times for a consultation:/,
+    skill: /^knowledge\+price\+knowledge\+offer_slots$/,
+  },
+  { q: 'can you see me this week?', skill: 'offer_slots' },
+  { q: "can you see me if i don't have insurance?", expect: /very welcome without insurance.*membership plan/, skill: 'insurance' },
+  { q: "what's your name", expect: /virtual assistant for Brightside Dental/, skill: 'smalltalk' },
+  { q: 'i hate my smile', source: 'smile-makeover' },
+  { q: "i havent been to the dentist in years and im embarrassed", source: 'returning-after-years' },
 ];
 
 /** Multi-turn conversations: context, follow-ups, booking and corrections. */
@@ -457,6 +478,49 @@ export const SCRIPTS: Script[] = [
       { say: 'how much are crowns', expect: /Would you like to book/ },
       { say: 'no thanks', expect: /No problem/ },
       { say: 'what are your hours', skill: 'hours', not: /Would you like to book/ },
+    ],
+  },
+  {
+    name: 'remembers a pregnancy for later answers',
+    turns: [
+      { say: "i'm pregnant", source: 'pregnancy-and-dental-care' },
+      { say: 'can i get my teeth whitened?', expect: /postponed during pregnancy/ },
+    ],
+  },
+  {
+    name: 'remembers smoking for surgical questions',
+    turns: [
+      { say: 'i smoke', source: 'smoking-and-oral-health' },
+      { say: 'can i get dental implants?', expect: /As you smoke: smoking raises the risk of an implant failing/ },
+    ],
+  },
+  {
+    name: 'remembers no insurance for prices',
+    turns: [
+      { say: "i don't have insurance", expect: /No problem.*membership plan/, skill: 'insurance' },
+      { say: 'how much is a check-up?', expect: /\$150–\$300[\s\S]*membership plan/, not: /insurance may cover/, skill: 'price' },
+    ],
+  },
+  {
+    name: '"tell me more" continues the same article',
+    turns: [
+      { say: 'how long do implants last', expect: /decades/, source: 'dental-implants' },
+      { say: 'tell me more', source: 'dental-implants', not: /can last for decades/ },
+    ],
+  },
+  {
+    name: '"explain that more simply" uses plain words',
+    turns: [
+      { say: 'what is a root canal', expect: /pulp/, source: 'root-canal-treatment' },
+      { say: 'can you explain that more simply', expect: /^In plain terms: When the soft inside of a tooth/ },
+    ],
+  },
+  {
+    name: '"that didn\'t answer my question" asks what they meant, then offers the team',
+    turns: [
+      { say: 'how long do veneers last', expect: /10 to 15 years/ },
+      { say: "that didn't answer my question", expect: /what would you like to know about porcelain veneers/, not: /[Bb]onding/ },
+      { say: "that didn't answer it either", expect: /someone from the team/ },
     ],
   },
 ];
