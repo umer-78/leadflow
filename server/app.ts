@@ -4,6 +4,7 @@
  */
 import express from 'express';
 import { sql } from 'drizzle-orm';
+import { rateLimit } from './auth.ts';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
 import { errorHandler, route } from './http.ts';
@@ -62,6 +63,9 @@ export function createApp(deps: AppDeps): express.Express {
     })
   );
 
+  // A ceiling for every API route (well above what the dashboard and chat use); routes with
+  // stricter needs (sign-in, chat, AI self-test) add their own limits.
+  app.use('/api', rateLimit({ windowMs: 60_000, max: 1200 }));
   app.use('/api/auth', authRoutes(deps));
   app.use('/api/public', publicRoutes(deps));
   app.use('/api/knowledge', knowledgeRoutes(deps));
