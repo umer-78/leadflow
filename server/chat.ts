@@ -30,6 +30,7 @@ import {
   upsertLeadFromContact,
   type Queryable,
 } from './leads.ts';
+import { newManageToken, scheduleReminders } from './automations.ts';
 import {
   Receptionist,
   newChatState,
@@ -215,7 +216,7 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
         conversation.leadId = lead.id;
         const [appt] = await tx
           .insert(appointments)
-          .values({ orgId: org.id, leadId: lead.id, startsAt: start, endsAt: end, service, notes: 'Requested by the website assistant' })
+          .values({ orgId: org.id, leadId: lead.id, startsAt: start, endsAt: end, service, notes: 'Requested by the website assistant', manageToken: newManageToken() })
           .returning();
         const [booked] = await tx
           .update(leads)
@@ -223,6 +224,7 @@ export async function chatTurn(deps: ChatDeps, input: ChatInput): Promise<ChatOu
           .where(eq(leads.id, lead.id))
           .returning();
         await skipPendingFollowups(tx, lead.id, 'Lead requested an appointment');
+        await scheduleReminders(tx, org, appt, booked, now);
         await logActivity(tx, org.id, 'APPOINTMENT_REQUESTED', 'APPOINTMENT', appt.id, { service, startsAt: appt.startsAt, leadId: lead.id });
         if (booked.email && !booked.optedOut) {
           const email = renderConfirmation(org, booked, service, slot.label, deps.config.publicUrl ? `${deps.config.publicUrl}/u/${booked.unsubscribeToken}` : undefined);

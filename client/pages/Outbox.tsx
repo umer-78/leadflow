@@ -2,11 +2,11 @@ import { Mail } from 'lucide-react';
 import { useState } from 'react';
 import type { PageProps } from '../App.tsx';
 import { useApi } from '../api.ts';
-import { dateTime } from '../format.ts';
+import { dateTime, outboundLabel } from '../format.ts';
 import type { Outbound } from '../types.ts';
 import { Button, Card, EmptyState, ErrorNote, Loading, Modal, OutboundStatusBadge, PageHeader } from '../ui.tsx';
 
-const KIND = (o: Outbound) => (o.kind === 'FOLLOWUP' ? `Follow-up · day ${o.step}` : o.kind === 'CONFIRMATION' ? 'Confirmation' : 'Staff alert');
+const KIND = (o: Outbound) => outboundLabel(o);
 
 export function OutboxPage(_: PageProps) {
   const [offset, setOffset] = useState(0);

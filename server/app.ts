@@ -4,16 +4,18 @@
  */
 import express from 'express';
 import { sql } from 'drizzle-orm';
+import { rateLimit } from './auth.ts';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
 import { errorHandler, route } from './http.ts';
 import type { PageFetcher } from './knowledge/importer.ts';
 import type { Mailer } from './mailer.ts';
+import { aiRoutes } from './routes/ai.ts';
 import { authRoutes } from './routes/auth.ts';
 import { billingRoutes } from './routes/billing.ts';
 import { dashboardRoutes } from './routes/dashboard.ts';
 import { knowledgeRoutes } from './routes/knowledge.ts';
-import { publicRoutes, unsubscribeRoute } from './routes/public.ts';
+import { appointmentLinksRoute, publicRoutes, unsubscribeRoute } from './routes/public.ts';
 import { settingsRoutes } from './routes/settings.ts';
 
 export interface AppDeps {
@@ -61,13 +63,18 @@ export function createApp(deps: AppDeps): express.Express {
     })
   );
 
+  // A ceiling for every API route (well above what the dashboard and chat use); routes with
+  // stricter needs (sign-in, chat, AI self-test) add their own limits.
+  app.use('/api', rateLimit({ windowMs: 60_000, max: 1200 }));
   app.use('/api/auth', authRoutes(deps));
   app.use('/api/public', publicRoutes(deps));
   app.use('/api/knowledge', knowledgeRoutes(deps));
   app.use('/api/billing', billingRoutes(deps));
+  app.use('/api/ai', aiRoutes(deps));
   app.use('/api', settingsRoutes(deps));
   app.use('/api', dashboardRoutes(deps));
   app.use(unsubscribeRoute(deps));
+  app.use(appointmentLinksRoute(deps));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found.' });
   });

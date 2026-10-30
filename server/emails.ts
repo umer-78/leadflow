@@ -114,9 +114,146 @@ export function renderConfirmation(org: Organization, lead: Lead, service: strin
   };
 }
 
+// ---------------------------------------------------------------- reminders and follow-ups (see automations.ts)
+
+export interface PatientEmailContext {
+  org: Organization;
+  lead: Lead;
+  /** Link to the clinic's chat for booking. */
+  bookingUrl?: string;
+  unsubscribeUrl?: string;
+}
+
+const visitFor = (service: string) => (service === 'Consultation' ? 'consultation' : `${lowerFirst(service)} appointment`);
+
+function signOff(c: PatientEmailContext, closing = 'See you soon'): string[] {
+  return [`${closing},\nThe team at ${c.org.name}`, footer(c)];
+}
+
+export function renderReminder(
+  c: PatientEmailContext & { service: string; label: string; when: 'today' | 'tomorrow' | 'soon'; manageUrl?: string; confirmed: boolean }
+): RenderedEmail {
+  const phone = c.org.phone ? formatPhone(c.org.phone) : undefined;
+  const day = c.when === 'soon' ? '' : ` ${c.when}`;
+  const body = [`Hi ${first(c.lead.name)},`, `This is a reminder of your ${visitFor(c.service)} at ${c.org.name}${day}: ${c.label}.`];
+  if (c.org.address) body.push(`Where: ${c.org.address}`);
+  if (c.manageUrl) {
+    body.push(c.confirmed ? `Need to reschedule or cancel? You can do it here: ${c.manageUrl}` : `Please confirm you can make it, or let us know if you can't: ${c.manageUrl}`);
+  }
+  body.push(`If anything changes${phone ? `, call us on ${phone} or` : ','} reply to this email.`);
+  return { subject: `Reminder: your appointment${day} — ${c.label}`, text: [...body, ...signOff(c)].join('\n\n') };
+}
+
+export function renderRecall(c: PatientEmailContext & { months: number }): RenderedEmail {
+  return {
+    subject: `Time for your next check-up at ${c.org.name}`,
+    text: [
+      `Hi ${first(c.lead.name)},`,
+      `It's been about ${c.months} months since your last visit, so you're due for a check-up and cleaning. Regular visits catch small problems early, while they're quicker and easier to treat.`,
+      nextStep(c),
+      ...signOff(c, 'Warm regards'),
+    ].join('\n\n'),
+  };
+}
+
+export function renderNoShow(c: PatientEmailContext & { service: string; label: string }): RenderedEmail {
+  return {
+    subject: 'We missed you today',
+    text: [
+      `Hi ${first(c.lead.name)},`,
+      `We're sorry we missed you at your ${visitFor(c.service)} (${c.label}). These things happen — if you'd still like to come in, we'd be glad to find you another time.`,
+      nextStep(c),
+      ...signOff(c, 'Warm regards'),
+    ].join('\n\n'),
+  };
+}
+
+export function renderReviewRequest(c: PatientEmailContext & { reviewUrl: string }): RenderedEmail {
+  return {
+    subject: `How was your visit to ${c.org.name}?`,
+    text: [
+      `Hi ${first(c.lead.name)},`,
+      `Thank you for visiting us. If you have a minute, we'd really appreciate a short review — it helps other patients find a dentist they can trust: ${c.reviewUrl}`,
+      `If anything wasn't right, just reply to this email and tell us. We read every message.`,
+      ...signOff(c, 'Thank you'),
+    ].join('\n\n'),
+  };
+}
+
+export function renderReactivation(c: PatientEmailContext & { article?: KnowledgeArticle; financing?: KnowledgeArticle }): RenderedEmail {
+  const service = c.lead.serviceInterest ?? undefined;
+  const topic = service ? lowerFirst(service) : undefined;
+  const body = [
+    `Hi ${first(c.lead.name)},`,
+    topic
+      ? `A while ago you asked us about ${topic}. If it's still on your mind, we're happy to answer any questions or find you a time that suits you.`
+      : `A while ago you got in touch with us. If you're still looking for a dentist, we'd be glad to help.`,
+  ];
+  if (c.article) body.push(c.article.summary);
+  if (c.financing) body.push(c.financing.summary);
+  body.push(nextStep(c));
+  return { subject: topic ? `Still thinking about ${topic}?` : `Still looking for a dentist?`, text: [...body, ...signOff(c, 'Warm regards')].join('\n\n') };
+}
+
+export function renderWaitlistOffer(c: PatientEmailContext & { label: string }): RenderedEmail {
+  const phone = c.org.phone ? formatPhone(c.org.phone) : undefined;
+  const ways = [c.bookingUrl ? `book it here: ${c.bookingUrl}` : undefined, phone ? `call us on ${phone}` : undefined, 'or reply to this email'].filter(Boolean);
+  return {
+    subject: `An earlier appointment just opened up: ${c.label}`,
+    text: [
+      `Hi ${first(c.lead.name)},`,
+      `Good news — an appointment just opened up on ${c.label}. You asked to hear about earlier times, so we're letting you know first. Openings go quickly; if it suits you, ${ways.join(', ')}.`,
+      `If it doesn't work for you, no problem: you'll stay on our waitlist.`,
+      ...signOff(c, 'Warm regards'),
+    ].join('\n\n'),
+  };
+}
+
+export interface DigestInput {
+  org: Organization;
+  /** "Thursday, October 29" — the day the numbers cover. */
+  dayLabel: string;
+  leads: { total: number; high: number; top: { name: string; service: string | null; tier: string }[] };
+  conversations: { total: number; handled: number; unanswered: number };
+  bookings: number;
+  attention: { name: string; reason: string }[];
+  today: { time: string; name: string; service: string; status: string }[];
+  emails: { sent: number; failed: number };
+  link?: string;
+}
+
+export function renderDigest(d: DigestInput): RenderedEmail {
+  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const lines: string[] = [`Here's how ${d.dayLabel} went, and what's on today.`];
+  const leadLine = [`New leads: ${d.leads.total}${d.leads.high ? ` (${d.leads.high} high intent)` : ''}`];
+  for (const l of d.leads.top) leadLine.push(`  • ${l.name}${l.service ? ` — ${l.service}` : ''} (${l.tier.toLowerCase()})`);
+  lines.push(leadLine.join('\n'));
+  lines.push(
+    [
+      `Website chats: ${d.conversations.total}${d.conversations.total ? ` (${d.conversations.handled} handled by the assistant without the team)` : ''}`,
+      `Appointment requests: ${d.bookings}`,
+      d.conversations.unanswered ? `Questions the assistant couldn't answer: ${d.conversations.unanswered} — add answers in the AI Center` : undefined,
+      d.emails.sent || d.emails.failed ? `Emails sent: ${d.emails.sent}${d.emails.failed ? `, ${d.emails.failed} failed` : ''}` : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n')
+  );
+  if (d.attention.length) lines.push([`Needs a reply (${d.attention.length}):`, ...d.attention.map((a) => `  • ${a.name} — ${a.reason}`)].join('\n'));
+  lines.push(
+    d.today.length
+      ? [`Today's appointments (${d.today.length}):`, ...d.today.map((a) => `  • ${a.time} ${a.name} — ${a.service}${a.status === 'REQUESTED' ? ' (not confirmed yet)' : ''}`)].join('\n')
+      : 'No appointments booked for today yet.'
+  );
+  if (d.link) lines.push(`Open LeadFlow: ${d.link}`);
+  return {
+    subject: `${d.org.name}: ${plural(d.leads.total, 'new lead')}, ${plural(d.bookings, 'booking')} — ${d.dayLabel}`,
+    text: lines.join('\n\n'),
+  };
+}
+
 export interface AlertInput {
   org: Organization;
-  kind: 'NEW_LEAD' | 'APPOINTMENT' | 'ER' | 'URGENT' | 'HANDOFF';
+  kind: 'NEW_LEAD' | 'APPOINTMENT' | 'ER' | 'URGENT' | 'HANDOFF' | 'CANCELLED';
   lead?: Lead | null;
   reason?: string;
   detail?: string;
@@ -133,6 +270,7 @@ export function renderStaffAlert(a: AlertInput): RenderedEmail {
     ER: `Possible medical emergency in website chat`,
     URGENT: `Urgent: ${a.reason ?? 'dental problem'} — ${who}`,
     HANDOFF: `Callback requested: ${who}`,
+    CANCELLED: `Appointment cancelled by the patient: ${who}${a.detail ? ` — ${a.detail}` : ''}`,
   }[a.kind];
   const lines: string[] = [];
   if (a.kind === 'ER') {

@@ -1,4 +1,5 @@
 /** Display formatting. Dates are shown in the clinic's time zone. */
+import type { Outbound } from './types.ts';
 
 let clinicTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 export function setClinicTimeZone(tz: string) {
@@ -48,4 +49,30 @@ export const titleCase = (s: string) => s.toLowerCase().replace(/_/g, ' ').repla
 export function priceRange(min: number | null, max: number | null, unit?: string | null): string {
   const r = min != null && max != null ? (min === max ? money(min) : `${money(min)}–${money(max)}`) : min != null ? `from ${money(min)}` : max != null ? `up to ${money(max)}` : '';
   return r ? `${r}${unit ? ` ${unit}` : ''}` : '';
+}
+
+/** What an outbound email is, for lists ("Reminder · 24 h before"). */
+export function outboundLabel(o: Pick<Outbound, 'kind' | 'step'>): string {
+  switch (o.kind) {
+    case 'FOLLOWUP':
+      return `Follow-up · day ${o.step}`;
+    case 'CONFIRMATION':
+      return 'Appointment confirmation';
+    case 'REMINDER':
+      return `Reminder · ${o.step} h before`;
+    case 'RECALL':
+      return 'Check-up recall';
+    case 'NO_SHOW':
+      return 'Missed appointment';
+    case 'REVIEW':
+      return 'Review request';
+    case 'REACTIVATION':
+      return 'Re-engagement';
+    case 'WAITLIST':
+      return 'Waitlist opening';
+    case 'DIGEST':
+      return 'Morning digest';
+    default:
+      return 'Staff alert';
+  }
 }
