@@ -226,6 +226,15 @@ describe('automations', { skip: !ADMIN_URL && 'set TEST_DATABASE_URL to run the 
     void db;
   });
 
+  it('reopening and re-completing a visit queues one review and one recall, not two', async () => {
+    const visit = await book('Dee Double', 'dee@example.com', new Date(Date.now() - 2 * HOUR));
+    await owner('PATCH', `/api/appointments/${visit.id}`, { status: 'COMPLETED' });
+    await owner('PATCH', `/api/appointments/${visit.id}`, { status: 'CONFIRMED' });
+    await owner('PATCH', `/api/appointments/${visit.id}`, { status: 'COMPLETED' });
+    const pending = (await queued(visit.id)).filter((m) => m.status === 'PENDING');
+    assert.deepEqual(pending.map((m) => m.kind).sort(), ['RECALL', 'REVIEW']);
+  });
+
   it('invites quiet leads back once and sends the team one digest each morning', async () => {
     const db = database.db;
     assert.equal((await owner('PATCH', '/api/settings', { automations: { reactivation: { enabled: true, afterDays: 30 } } })).status, 200);
