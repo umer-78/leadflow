@@ -13,7 +13,7 @@ import { authRoutes } from './routes/auth.ts';
 import { billingRoutes } from './routes/billing.ts';
 import { dashboardRoutes } from './routes/dashboard.ts';
 import { knowledgeRoutes } from './routes/knowledge.ts';
-import { publicRoutes, unsubscribeRoute } from './routes/public.ts';
+import { appointmentLinksRoute, publicRoutes, unsubscribeRoute } from './routes/public.ts';
 import { settingsRoutes } from './routes/settings.ts';
 
 export interface AppDeps {
@@ -68,6 +68,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use('/api', settingsRoutes(deps));
   app.use('/api', dashboardRoutes(deps));
   app.use(unsubscribeRoute(deps));
+  app.use(appointmentLinksRoute(deps));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found.' });
   });

@@ -17,8 +17,9 @@ import {
   type LeadStatus,
   type LeadTier,
 } from '../db/schema.ts';
-import { HttpError, body, email, nullableStr, oneOf, route, str, uuidParam } from '../http.ts';
+import { HttpError, body, bool, email, nullableStr, oneOf, route, str, uuidParam } from '../http.ts';
 import { logActivity, newUnsubscribeToken, setLeadStatus } from '../leads.ts';
+import { newManageToken, onAppointmentChange, scheduleReminders } from '../automations.ts';
 import { zonedToUtc } from '../scheduling.ts';
 
 const LEAD_STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'BOOKED', 'WON', 'LOST', 'DO_NOT_CONTACT'];
@@ -259,6 +260,11 @@ export function dashboardRoutes(deps: AppDeps): Router {
       if (service !== undefined) patch.serviceInterest = service;
       const notes = nullableStr(b, 'notes', 5000);
       if (notes !== undefined) patch.notes = notes;
+      const waitlist = bool(b, 'waitlist');
+      if (waitlist !== undefined && waitlist !== lead.waitlist) {
+        patch.waitlist = waitlist;
+        patch.waitlistSince = waitlist ? new Date() : null;
+      }
       if (Object.keys(patch).length) {
         [lead] = await db.update(leads).set({ ...patch, updatedAt: new Date() }).where(eq(leads.id, id)).returning();
         await logActivity(db, org.id, 'LEAD_UPDATED', 'LEAD', id, { fields: Object.keys(patch) }, req.auth!.user.id);
@@ -434,8 +440,11 @@ export function dashboardRoutes(deps: AppDeps): Router {
           status: oneOf(b, 'status', APPT_STATUSES) ?? 'CONFIRMED',
           notes: str(b, 'notes', { max: 2000 }) ?? null,
           source: 'MANUAL',
+          manageToken: newManageToken(),
         })
         .returning();
+      const [patient] = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
+      await scheduleReminders(db, org, appt, patient, new Date());
       await logActivity(db, org.id, 'APPOINTMENT_CREATED', 'APPOINTMENT', appt.id, { leadId, service }, req.auth!.user.id);
       res.status(201).json(appt);
     })
@@ -461,6 +470,7 @@ export function dashboardRoutes(deps: AppDeps): Router {
       }
       if (notes !== undefined) patch.notes = notes;
       const [updated] = await db.update(appointments).set(patch).where(eq(appointments.id, id)).returning();
+      await onAppointmentChange(db, org, appt, updated, new Date());
       if (status && appt.leadId) {
         const [lead] = await db.select().from(leads).where(eq(leads.id, appt.leadId)).limit(1);
         if (lead && status === 'CONFIRMED' && !['BOOKED', 'WON'].includes(lead.status)) await setLeadStatus(db, lead, 'BOOKED', req.auth!.user.id);

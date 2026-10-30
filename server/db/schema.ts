@@ -13,7 +13,33 @@ export type LeadTier = 'HIGH' | 'MEDIUM' | 'LOW';
 export type AppointmentStatus = 'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 export type ConversationStatus = 'OPEN' | 'ESCALATED' | 'CLOSED';
 export type OutboundStatus = 'PENDING' | 'SENDING' | 'SENT' | 'LOGGED' | 'SKIPPED' | 'FAILED';
-export type OutboundKind = 'FOLLOWUP' | 'STAFF_ALERT' | 'CONFIRMATION';
+export type OutboundKind =
+  | 'FOLLOWUP'
+  | 'STAFF_ALERT'
+  | 'CONFIRMATION'
+  /** Appointment reminder (step = hours before). */
+  | 'REMINDER'
+  /** "Time for your check-up" after a completed visit. */
+  | 'RECALL'
+  | 'NO_SHOW'
+  | 'REVIEW'
+  /** A lead that went quiet, invited back once. */
+  | 'REACTIVATION'
+  /** A cancelled slot offered to a waitlisted patient. */
+  | 'WAITLIST'
+  /** Morning summary for the team (step = local date as YYYYMMDD). */
+  | 'DIGEST';
+
+/** Patient reminders and follow-ups the clinic can switch on and off (missing keys use the defaults in automations.ts). */
+export interface AutomationSettings {
+  reminders: { enabled: boolean; hoursBefore: number[] };
+  recall: { enabled: boolean; months: number };
+  noShow: { enabled: boolean };
+  reviews: { enabled: boolean; url: string | null; delayHours: number };
+  reactivation: { enabled: boolean; afterDays: number };
+  waitlist: { enabled: boolean };
+  digest: { enabled: boolean; hour: number };
+}
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 const updatedAt = () => timestamp('updated_at', { withTimezone: true }).notNull().defaultNow();
@@ -38,6 +64,7 @@ export const organizations = pgTable('organizations', {
   /** Extra instructions shown for urgent problems, e.g. an after-hours number. */
   emergencyInstructions: text('emergency_instructions'),
   followupsEnabled: boolean('followups_enabled').notNull().default(true),
+  automations: jsonb('automations').$type<Partial<AutomationSettings>>().notNull().default({}),
   plan: text('plan').notNull().default('trial'),
   planStatus: text('plan_status').notNull().default('trial'),
   isDemo: boolean('is_demo').notNull().default(false),
@@ -128,6 +155,11 @@ export const leads = pgTable(
     source: text('source').notNull().default('WEB_CHAT'),
     notes: text('notes'),
     optedOut: boolean('opted_out').notNull().default(false),
+    /** Wants an earlier appointment if one opens up. */
+    waitlist: boolean('waitlist').notNull().default(false),
+    waitlistSince: timestamp('waitlist_since', { withTimezone: true }),
+    /** When the one-time "still thinking about it?" email was queued. */
+    reactivatedAt: timestamp('reactivated_at', { withTimezone: true }),
     unsubscribeToken: text('unsubscribe_token').notNull().unique(),
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: createdAt(),
@@ -193,6 +225,10 @@ export const appointments = pgTable(
     status: text('status').$type<AppointmentStatus>().notNull().default('REQUESTED'),
     notes: text('notes'),
     source: text('source').notNull().default('AI_RECEPTIONIST'),
+    /** Secret for the patient's confirm / cancel links in reminder emails. */
+    manageToken: text('manage_token').unique(),
+    /** When the patient confirmed from a reminder. */
+    patientConfirmedAt: timestamp('patient_confirmed_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -207,8 +243,10 @@ export const outboundMessages = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
     leadId: uuid('lead_id').references(() => leads.id, { onDelete: 'cascade' }),
+    /** The appointment a reminder, review request or waitlist offer is about. */
+    appointmentId: uuid('appointment_id').references(() => appointments.id, { onDelete: 'cascade' }),
     kind: text('kind').$type<OutboundKind>().notNull(),
-    /** Follow-up step in days after the lead was captured (0, 1, 3, 7). */
+    /** Follow-up step in days after the lead was captured (0, 1, 3, 7); hours before for reminders; YYYYMMDD for digests. */
     step: integer('step'),
     channel: text('channel').notNull().default('EMAIL'),
     toAddress: text('to_address').notNull(),
@@ -221,7 +259,11 @@ export const outboundMessages = pgTable(
     providerId: text('provider_id'),
     createdAt: createdAt(),
   },
-  (t) => [index('outbound_due_idx').on(t.status, t.scheduledFor), index('outbound_org_idx').on(t.orgId, t.createdAt)]
+  (t) => [
+    index('outbound_due_idx').on(t.status, t.scheduledFor),
+    index('outbound_org_idx').on(t.orgId, t.createdAt),
+    index('outbound_appointment_idx').on(t.appointmentId),
+  ]
 );
 
 export const activity = pgTable(
