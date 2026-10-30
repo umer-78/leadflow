@@ -8,6 +8,7 @@ import { rateLimit } from './auth.ts';
 import type { Config } from './config.ts';
 import type { DB } from './db/client.ts';
 import { errorHandler, route } from './http.ts';
+import type { Answerer } from './claude.ts';
 import type { PageFetcher } from './knowledge/importer.ts';
 import type { Mailer } from './mailer.ts';
 import { aiRoutes } from './routes/ai.ts';
@@ -26,6 +27,8 @@ export interface AppDeps {
   kick?: () => void;
   /** How website pages are fetched for "Import from your website" (tests use a fake website). */
   fetchPage?: PageFetcher;
+  /** Claude answering mode, when the server has an Anthropic API key (tests use a fake). */
+  claude?: Answerer;
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -55,7 +58,7 @@ export function createApp(deps: AppDeps): express.Express {
       res.status(database === 'ok' ? 200 : 503).json({
         status: database === 'ok' ? 'ok' : 'degraded',
         database,
-        assistant: 'localbrain (on-device, no external AI)',
+        assistant: deps.claude ? `localbrain + Claude (${deps.claude.model})` : 'localbrain (on-device, no external AI)',
         email: deps.mailer.live ? 'resend' : 'log-only (set RESEND_API_KEY to send)',
         billing: deps.config.stripe.secretKey ? 'stripe' : 'disabled',
         time: new Date().toISOString(),

@@ -230,11 +230,20 @@ function HoursTab({ s, save, canEdit }: { s: Settings; save: { busy: boolean; sa
 }
 
 function AssistantTab({ s, save, canEdit }: { s: Settings; save: { busy: boolean; save: Saver }; canEdit: boolean }) {
-  const { form, setForm, set, dirty } = useForm({ greeting: s.greeting ?? '', emergencyInstructions: s.emergencyInstructions ?? '', followupsEnabled: s.followupsEnabled });
+  const { form, setForm, set, dirty } = useForm({
+    greeting: s.greeting ?? '',
+    emergencyInstructions: s.emergencyInstructions ?? '',
+    followupsEnabled: s.followupsEnabled,
+    claudeEnabled: s.claudeEnabled,
+  });
   return (
     <Section
       title="Assistant behaviour"
-      description="The assistant runs entirely on your server: no outside AI service sees your patients' messages."
+      description={
+        s.claude && s.claudeEnabled
+          ? 'Open questions are answered by Claude (Anthropic) from your own knowledge base, with names, emails and phone numbers removed first. Safety advice, booking, prices and hours are handled on your server.'
+          : "The assistant runs entirely on your server: no outside AI service sees your patients' messages."
+      }
       footer={canEdit && <Button variant="primary" disabled={!dirty} loading={save.busy} onClick={() => void save.save(form)}>Save changes</Button>}
     >
       <fieldset disabled={!canEdit} className="grid gap-4">
@@ -251,6 +260,19 @@ function AssistantTab({ s, save, canEdit }: { s: Settings; save: { busy: boolean
             <p className="text-slate-500">Leads who leave an email get helpful follow-ups after 0, 1, 3 and 7 days. They stop as soon as the lead books, replies, opts out or you mark them contacted elsewhere.</p>
           </div>
         </div>
+        {s.claude && (
+          <div className="flex items-start gap-3">
+            <Toggle checked={form.claudeEnabled} disabled={!canEdit} onChange={(v) => setForm((f) => ({ ...f, claudeEnabled: v }))} label="Claude answers" />
+            <div className="text-sm">
+              <p className="font-medium text-slate-800">Claude answers open questions</p>
+              <p className="text-slate-500">
+                Questions about treatments, comparisons and follow-ups are answered by Claude ({s.claude.model}) using only your clinic&apos;s settings and knowledge base.
+                Names, emails and phone numbers are removed before anything is sent to Anthropic. Emergencies, booking, prices, hours and opt-outs always use the
+                built-in assistant, which also answers whenever Claude is slow or unavailable.
+              </p>
+            </div>
+          </div>
+        )}
       </fieldset>
     </Section>
   );

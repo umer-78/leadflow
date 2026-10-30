@@ -6,7 +6,9 @@ spots emergencies, follows up by email, and gives the team one dashboard for all
 
 The AI runs **on your own server** with [`localbrain`](packages/localbrain), a dependency-free
 engine in this repo: no third-party AI service, no API keys, no model downloads, and patient
-messages never leave your infrastructure.
+messages never leave your infrastructure. Optionally, add an Anthropic API key and **Claude**
+writes the answers to open questions from each clinic's own knowledge base, while emergencies,
+booking, prices and hours stay with the built-in engine (see [DEPLOY.md](DEPLOY.md#claude-answers-optional)).
 
 ## What it does
 
@@ -98,10 +100,11 @@ and the Docker image runs anywhere.
 
 ## Honest limits
 
-- The assistant is not a large language model: it understands intent, extracts details, quotes
-  the right passage and follows the flows in `server/receptionist/engine.ts`. Unusual questions
-  get an honest "I'm not sure — want the team to get back to you?" and are listed for you to teach.
-  `localbrain`'s `refine` hook is where a generative model could be plugged in later.
+- The built-in assistant is not a large language model: it understands intent, extracts details,
+  quotes the right passage and follows the flows in `server/receptionist/engine.ts`. Unusual
+  questions get an honest "I'm not sure — want the team to get back to you?" and are listed for you
+  to teach. With an Anthropic API key, Claude answers those open questions instead
+  (`server/claude.ts`); the built-in engine still decides what is an emergency, a booking or a price.
 - Appointments are *requests* for staff to confirm; there is no two-way calendar sync yet.
 - Email only (no SMS) for follow-ups and reminders.
 - See [docs/business/competitors.md](docs/business/competitors.md) for how LeadFlow compares with
