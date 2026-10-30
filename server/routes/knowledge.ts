@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { and, asc, eq } from 'drizzle-orm';
 import { requireAuth, requireRole } from '../auth.ts';
 import type { AppDeps } from '../app.ts';
-import { receptionistFor, slotFinder } from '../chat.ts';
+import { claudeTurn, receptionistFor, slotFinder } from '../chat.ts';
 import { knowledgeArticles } from '../db/schema.ts';
 import { HttpError, body, bool, int, nullableStr, oneOf, route, str, uuidParam } from '../http.ts';
 import type { ArticleCategory } from '../knowledge/library.ts';
@@ -223,6 +223,14 @@ export function knowledgeRoutes(deps: AppDeps): Router {
         findSlots: slotFinder(db, org, now),
         reserve: async () => ({ ok: true, appointmentId: 'preview' }),
       }, now);
+      // The same answer a patient would get, Claude's included when it's on.
+      const improved = await claudeTurn(deps, org, receptionist, result, message, [], now).catch(() => undefined);
+      if (improved) {
+        const { answer } = improved;
+        const llm = { model: answer.model, ms: answer.ms, answered: answer.answered, usage: answer.usage };
+        res.json({ reply: improved.reply, meta: { ...result.meta, unanswered: !answer.answered, llm }, state: improved.state, events: result.events });
+        return;
+      }
       res.json({ reply: result.reply, meta: result.meta, state: result.state, events: result.events });
     })
   );

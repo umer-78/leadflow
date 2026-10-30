@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — LeadFlow AI</title><link rel="stylesheet" href="_legal.css"></head><body><div class="wrap">
 <a class="back" href="./">&larr; LeadFlow AI</a>
-<h1>Privacy Policy</h1><p class="meta">Last updated: 1 October 2026</p>
+<h1>Privacy Policy</h1><p class="meta">Last updated: 30 October 2026</p>
 <p>LeadFlow AI is self-hosted software. When you deploy it, the clinic or agency running it is the data controller, and this policy describes how the software handles data so you can meet your own obligations.</p>
 <h2>What the software stores</h2>
 <ul>
@@ -11,7 +11,7 @@
 </ul>
 <p>Each clinic's data is isolated from every other clinic in the same deployment (multi-tenant isolation), and that isolation is checked by the project's tests.</p>
 <h2>What it does not do</h2>
-<p>It does not sell data, and it does not share patient data between tenants. It sends message content to the language-model provider you configure only to generate replies; choose a provider whose terms fit your requirements.</p>
+<p>It does not sell data, and it does not share patient data between tenants. By default the assistant runs on your own server and sends nothing to an outside AI service. If the operator turns on Claude answers (by setting an Anthropic API key), the text of patients' open questions, with names, emails and phone numbers removed, and the clinic's knowledge articles are sent to Anthropic to write those answers; each clinic can switch this off. Choose it only if Anthropic's terms fit your requirements.</p>
 <h2>Retention</h2>
 <p>Enquiry and audit records are kept for as long as the operator configures. As operator you should set a retention period appropriate to your local rules and delete data on request.</p>
 <h2>Your rights</h2>

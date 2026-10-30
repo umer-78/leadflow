@@ -29,7 +29,7 @@ export function aiRoutes(deps: AppDeps): Router {
   r.get(
     '/checks',
     route(async (req, res) => {
-      res.json({ checks: await setupChecks(db, req.auth!.org, deps.mailer.live) });
+      res.json({ checks: await setupChecks(db, req.auth!.org, deps.mailer.live, new Date(), deps.claude?.model) });
     })
   );
 

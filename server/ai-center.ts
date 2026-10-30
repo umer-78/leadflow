@@ -12,6 +12,7 @@ import { appointments, conversations, knowledgeArticles, leads, messages, outbou
 import { libraryFor, removedTopics } from './knowledge/sync.ts';
 import { libraryVersion } from './orgs.ts';
 import { automationsOf } from './automations.ts';
+import { claudeCost, type ClaudeUsage } from './claude.ts';
 import { receptionistFor, slotFinder } from './chat.ts';
 import { newChatState, type TurnResult } from './receptionist/engine.ts';
 import { isOpenAt, utcToZoned } from './scheduling.ts';
@@ -23,6 +24,7 @@ interface Meta {
   unanswered?: boolean;
   safety?: 'ER' | 'URGENT' | 'SOON';
   sources?: { slug: string; title: string }[];
+  llm?: { model: string; answered: boolean; usage?: ClaudeUsage };
 }
 
 export interface Workload {
@@ -42,6 +44,8 @@ export interface Workload {
   byHour: number[];
   byDay: { date: string; conversations: number; messages: number }[];
   emails: { kind: string; sent: number; skipped: number; failed: number; scheduled: number }[];
+  /** Answers Claude wrote, its tokens and their estimated cost (null when the model's prices aren't known). */
+  claude: { answers: number; unanswered: number; tokens: ClaudeUsage; cost: number | null };
 }
 
 export interface Quality {
@@ -97,6 +101,7 @@ export async function aiActivity(db: DB, org: Organization, days: number, now = 
     }
   }
 
+  const claude: Workload['claude'] = { answers: 0, unanswered: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, cost: 0 };
   const quality: Quality = { answered: 0, unanswered: 0, complaints: 0, safety: { er: 0, urgent: 0, soon: 0 }, topics: [], gaps: [], corrections: [] };
   const topics = new Map<string, { slug: string; title: string; count: number }>();
   const gaps = new Map<string, Quality['gaps'][number]>();
@@ -123,6 +128,14 @@ export async function aiActivity(db: DB, org: Organization, days: number, now = 
     }
     lastAnswer = m.body;
     const meta = m.meta as Meta;
+    if (meta.llm) {
+      claude.answers++;
+      if (!meta.llm.answered) claude.unanswered++;
+      const usage = meta.llm.usage ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+      for (const key of ['input', 'output', 'cacheRead', 'cacheWrite'] as const) claude.tokens[key] += usage[key] ?? 0;
+      const cost = claudeCost(meta.llm.model, usage);
+      claude.cost = cost === undefined || claude.cost === null ? null : claude.cost + cost;
+    }
     if (meta.unanswered) {
       quality.unanswered++;
       const key = normalize(lastQuestion);
@@ -200,6 +213,7 @@ export async function aiActivity(db: DB, org: Organization, days: number, now = 
       byHour,
       byDay: [...byDay.values()],
       emails: [...emails.values()].sort((a, b) => b.sent - a.sent),
+      claude: { ...claude, cost: claude.cost === null ? null : Math.round(claude.cost * 100) / 100 },
     },
     quality,
   };
@@ -219,7 +233,7 @@ export interface Check {
 const PLACEHOLDER = /\[[^\]]{3,}\]/;
 
 /** Whether the clinic's setup lets the assistant do its job. */
-export async function setupChecks(db: DB, org: Organization, emailLive: boolean, now = new Date()): Promise<Check[]> {
+export async function setupChecks(db: DB, org: Organization, emailLive: boolean, now = new Date(), claudeModel?: string): Promise<Check[]> {
   const checks: Check[] = [];
   const add = (c: Check) => checks.push(c);
   const clinic = { label: 'Clinic settings', href: '#/settings/clinic' };
@@ -248,6 +262,13 @@ export async function setupChecks(db: DB, org: Organization, emailLive: boolean,
       ? { id: 'email', area: 'Email', status: 'ok', title: 'Email delivery', detail: 'Follow-ups, reminders and alerts are being delivered.' }
       : { id: 'email', area: 'Email', status: 'warn', title: 'Emails are not being delivered', detail: 'No email provider is connected, so emails are written and logged in the Outbox but not sent.' }
   );
+  if (claudeModel) {
+    add(
+      org.claudeEnabled
+        ? { id: 'claude', area: 'Assistant', status: 'ok', title: 'Claude answers open questions', detail: `Questions about treatments and follow-ups are answered by ${claudeModel} from your knowledge base.` }
+        : { id: 'claude', area: 'Assistant', status: 'warn', title: 'Claude answers are off', detail: 'Open questions are answered by the built-in assistant only.', fix: { label: 'Assistant settings', href: '#/settings/assistant' } }
+    );
+  }
   const automations = automationsOf(org);
   if (!automations.reminders.enabled) add({ id: 'reminders', area: 'Email', status: 'warn', title: 'Appointment reminders are off', detail: 'Reminders with a confirm link cut no-shows.', fix: { label: 'Reminders', href: '#/settings/automations' } });
 

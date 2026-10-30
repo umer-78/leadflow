@@ -50,8 +50,9 @@ site before quoting a number to a prospect.
 
 ## Where LeadFlow is ahead
 
-- **Privacy.** Patients' messages never leave the clinic's server: there is no
-  outside AI service. That's an easy answer to "where does our data go?".
+- **Privacy by default.** Out of the box, patients' messages never leave the
+  clinic's server. Claude answers are an opt-in, with contact details removed
+  first, and emergencies, booking and prices always stay on the server.
 - **Answers you can check.** Clinical answers come from a researched library
   in which every article cites its sources. A clinic can reword any article,
   and its own wording is never overwritten.
