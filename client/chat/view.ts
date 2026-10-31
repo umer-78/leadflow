@@ -433,7 +433,8 @@ export function mountChat(root: HTMLElement, transport: ChatTransport, options: 
     } catch (err) {
       setTyping(false);
       log.querySelector('.lf-row.lf-visitor:last-of-type')?.remove();
-      showError(err instanceof Error ? err.message : 'Could not send your message.', () => void submit(message));
+      // a programming error (TypeError and friends) is not a message for a patient
+      showError(err instanceof Error && err.constructor === Error ? err.message : 'Could not send your message. Please try again.', () => void submit(message));
     } finally {
       setBusy(false);
       if (!options.embedded || document.activeElement === input) input.focus();
@@ -495,7 +496,7 @@ export function mountChat(root: HTMLElement, transport: ChatTransport, options: 
     } catch (err) {
       name.textContent = 'Chat unavailable';
       chat.setAttribute('aria-busy', 'false');
-      showError(err instanceof Error ? err.message : 'Could not load the chat.', () => location.reload());
+      showError(err instanceof Error && err.constructor === Error ? err.message : 'Could not load the chat. Please reload the page.', () => location.reload());
     }
   })();
 }

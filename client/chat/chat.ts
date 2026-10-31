@@ -44,22 +44,42 @@ if (!/^[A-Za-z0-9_-]{8,64}$/.test(visitorId)) {
 }
 let conversationId = store.get('conversation') ?? undefined;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api/public${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Something went wrong. Please try again.');
+// Every failure reaches the patient as a sentence they can act on: the server's
+// own message when it sent one, otherwise a plain explanation. A raw
+// "Failed to fetch" or "Cannot read properties of undefined" never shows.
+async function request<T>(path: string, init?: RequestInit, valid?: (data: unknown) => boolean): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/public${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  } catch {
+    throw new Error(navigator.onLine === false ? 'You seem to be offline. Check your connection and try again.' : 'Could not reach the assistant. Please try again in a moment.');
+  }
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = data && typeof (data as { error?: unknown }).error === 'string' ? (data as { error: string }).error : '';
+    throw new Error(message || (res.status === 429 ? 'Lots of messages at once. Please wait a moment and try again.' : 'Something went wrong. Please try again.'));
+  }
+  if (data === null || (valid && !valid(data))) throw new Error('The assistant sent an answer this page could not read. Please reload and try again.');
   return data as T;
 }
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 const http: ChatTransport = {
   async start(): Promise<ChatStart> {
     if (!key) throw new Error('This chat link is missing its clinic key.');
-    const config = await request<{ clinic: ChatStart['clinic']; greeting: ChatReply }>(`/widget/${encodeURIComponent(key)}`);
+    const config = await request<{ clinic: ChatStart['clinic']; greeting: ChatReply }>(
+      `/widget/${encodeURIComponent(key)}`,
+      undefined,
+      (d) => isObject(d) && isObject(d.clinic) && typeof d.clinic.name === 'string' && isObject(d.greeting) && typeof d.greeting.text === 'string'
+    );
     document.title = `Chat with ${config.clinic.name}`;
     let history: ChatStart['history'] = [];
     if (conversationId) {
       const past = await request<{ messages: { role: 'assistant' | 'visitor'; body: string; suggestions?: string[]; ui?: ChatReply['ui'] }[] }>(
-        `/chat/${encodeURIComponent(key)}/${encodeURIComponent(conversationId)}?visitorId=${encodeURIComponent(visitorId)}`
+        `/chat/${encodeURIComponent(key)}/${encodeURIComponent(conversationId)}?visitorId=${encodeURIComponent(visitorId)}`,
+        undefined,
+        (d) => isObject(d) && Array.isArray(d.messages)
       ).catch(() => ({ messages: [] }));
       history = past.messages.map((m) => ({ role: m.role, text: m.body, suggestions: m.suggestions, ui: m.ui }));
       if (!history.length) conversationId = undefined;
@@ -67,10 +87,14 @@ const http: ChatTransport = {
     return { clinic: config.clinic, greeting: config.greeting, history };
   },
   async send(message: string): Promise<ChatReply> {
-    const data = await request<{ conversationId: string; reply: ChatReply }>(`/chat/${encodeURIComponent(key)}`, {
-      method: 'POST',
-      body: JSON.stringify({ visitorId, conversationId, message, pageUrl: document.referrer || location.href }),
-    });
+    const data = await request<{ conversationId: string; reply: ChatReply }>(
+      `/chat/${encodeURIComponent(key)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ visitorId, conversationId, message, pageUrl: document.referrer || location.href }),
+      },
+      (d) => isObject(d) && typeof d.conversationId === 'string' && isObject(d.reply) && typeof d.reply.text === 'string'
+    );
     conversationId = data.conversationId;
     store.set('conversation', conversationId);
     return data.reply;
