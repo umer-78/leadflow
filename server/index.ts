@@ -11,6 +11,7 @@ import { createClaudeAnswerer } from './claude.ts';
 import { loadConfig } from './config.ts';
 import { connect, runMigrations } from './db/client.ts';
 import { createMailer } from './mailer.ts';
+import { pageSecurityHeaders } from './security.ts';
 import { syncLibrary } from './knowledge/sync.ts';
 import { ensureDemo } from './orgs.ts';
 import { startWorker } from './worker.ts';
@@ -36,6 +37,13 @@ async function main() {
 
   if (config.env === 'production') {
     const dist = path.join(root, 'dist');
+    // CSP, framing and transport headers for every page and asset (server/security.ts)
+    app.use((req, res, next) => {
+      if (!req.path.startsWith('/api/')) {
+        for (const [name, value] of Object.entries(pageSecurityHeaders(req.path, req.secure))) res.setHeader(name, value);
+      }
+      next();
+    });
     app.use(express.static(dist, { index: false, maxAge: '1h' }));
     // The dashboard's page is read once, so serving it doesn't touch the disk on every request.
     const indexHtml = await readFile(path.join(dist, 'index.html'), 'utf8');

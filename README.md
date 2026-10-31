@@ -98,6 +98,17 @@ All configuration is environment variables — see [.env.example](.env.example).
 See [DEPLOY.md](DEPLOY.md) — a Render blueprint (web service + managed PostgreSQL) is included,
 and the Docker image runs anywhere.
 
+## Security
+
+- **Every clinic is isolated**: all queries are scoped by organization, with Owner / Admin / Staff /
+  Viewer roles; API routes are rate-limited (sign-in, chat and the AI self-test more tightly).
+- **Pages are locked down in production** (`server/security.ts`): a Content-Security-Policy with
+  same-origin scripts and connections only, no inline scripts or plugins, HSTS over https, and the
+  dashboard can never be framed. Only the chat page may be framed, because `widget.js` embeds it on
+  the clinic's own website.
+- **The chat shows patients plain sentences**, never a raw network or programming error, and checks
+  the shape of every answer from the server before drawing it.
+
 ## Honest limits
 
 - The built-in assistant is not a large language model: it understands intent, extracts details,
