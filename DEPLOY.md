@@ -28,14 +28,26 @@ database. Migrations run automatically when the server starts.
 
 LeadFlow runs on an AWS Lightsail server (`leadflow`, us-east-1, 2 GB, Ubuntu 24.04) at
 **https://184-195-78-153.sslip.io** (static IP `184.195.78.153`; HTTPS by Caddy). The app,
-its PostgreSQL database and the background worker all run on that server, set up by the
-launch script in the instance's details. It's paid from the AWS Free plan credits.
+its PostgreSQL database and the background worker all run on that server, set up by
+[`deploy/lightsail/setup.sh`](deploy/lightsail/setup.sh). It's paid from the AWS Free plan credits.
+
+To set up a new server, paste this as the instance's **launch script** when you create it
+(Ubuntu 24.04, 2 GB or more), then attach the static IP:
+
+```bash
+#!/bin/bash
+curl -fsSL https://raw.githubusercontent.com/umer-78/leadflow/main/deploy/lightsail/setup.sh | bash
+```
+
+The same script repairs a server that is up but not serving the site: it is safe to run again and
+keeps the database and `/etc/leadflow/env`.
 
 Open a terminal with **Lightsail console → leadflow → Connect using SSH** (SSH is only
 open to the console's browser terminal), then:
 
 | To | Run |
 | --- | --- |
+| Repair the setup (site not loading) | `curl -fsSL https://raw.githubusercontent.com/umer-78/leadflow/main/deploy/lightsail/setup.sh \| sudo bash` |
 | Update to the latest `main` | `sudo /opt/leadflow/update.sh` |
 | Turn on Claude answers / email | add `ANTHROPIC_API_KEY=...` or `RESEND_API_KEY=...` and `EMAIL_FROM=...` to `/etc/leadflow/env` (`sudo nano /etc/leadflow/env`), then `sudo systemctl restart leadflow` |
 | Use your own domain | point its DNS A record at `184.195.78.153`, then `echo app.your-clinic.com \| sudo tee /etc/leadflow/domain && sudo /opt/leadflow/set-host.sh` |

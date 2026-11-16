@@ -69,4 +69,16 @@ describe('slot search', () => {
     const after = findSlots({ ...base, now, date: '2026-10-22', time: '15:00', relation: 'after' });
     for (const s of after) assert.ok(utcToZoned(s, TZ).time >= '15:00');
   });
+
+  it('fills a named day before moving to the next one', () => {
+    const now = new Date('2026-10-16T14:00:00Z');
+    // Wednesday morning is 09:00-12:00: the spread pass alone would take 09:00 and 11:00, then jump to Thursday.
+    const morning = findSlots({ ...base, now, date: '2026-10-21', partOfDay: 'morning' });
+    assert.equal(morning.length, 3);
+    for (const s of morning) assert.equal(utcToZoned(s, TZ).date, '2026-10-21');
+    // A day with too little room still gets the next openings after it.
+    const busy = [{ start: zonedToUtc('2026-10-21', '09:30', TZ), end: zonedToUtc('2026-10-21', '12:00', TZ) }];
+    const tight = findSlots({ ...base, now, busy, date: '2026-10-21', partOfDay: 'morning' });
+    assert.deepEqual(tight.map((s) => utcToZoned(s, TZ).date), ['2026-10-21', '2026-10-22', '2026-10-22']);
+  });
 });

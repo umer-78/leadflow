@@ -228,15 +228,20 @@ export function findSlots(q: SlotQuery): Date[] {
       .map((c) => c.at);
   }
 
+  // A named day is filled from that day first (spread out, then any time left), so "Tuesday
+  // morning" does not come back with a Wednesday slot while Tuesday still has room.
+  const onDay = q.date ? candidates.filter((c) => c.date === q.date) : [];
   const picked: typeof candidates = [];
-  for (const c of candidates) {
-    if (picked.length >= limit) break;
-    const prev = picked[picked.length - 1];
-    if (!prev || c.date !== prev.date || c.minutes - prev.minutes >= 120) picked.push(c);
-  }
-  for (const c of candidates) {
-    if (picked.length >= limit) break;
-    if (!picked.includes(c)) picked.push(c);
+  for (const pool of onDay.length ? [onDay, candidates] : [candidates]) {
+    for (const c of pool) {
+      if (picked.length >= limit) break;
+      const prev = picked[picked.length - 1];
+      if (!picked.includes(c) && (!prev || c.date !== prev.date || c.minutes - prev.minutes >= 120)) picked.push(c);
+    }
+    for (const c of pool) {
+      if (picked.length >= limit) break;
+      if (!picked.includes(c)) picked.push(c);
+    }
   }
   return picked.sort((a, b) => a.at.getTime() - b.at.getTime()).map((c) => c.at);
 }

@@ -2117,6 +2117,11 @@ export class Receptionist {
         ui: { form: { fields: this.missingContact(t.chat.contact, ['name', 'phone']), submit: 'Request a call back' } },
       };
     }
+    // Say so when the requested day could not fill the list on its own.
+    if (pref.date && !lead && slots.some((s) => utcToZoned(new Date(s.startsAt), this.clinic.timezone).date !== pref.date)) {
+      const onDay = slots.filter((s) => utcToZoned(new Date(s.startsAt), this.clinic.timezone).date === pref.date).length;
+      if (onDay) intro = `${onDay === 1 ? 'There is one opening' : `There are ${onDay} openings`} ${wanted}, plus the next available after that:`;
+    }
     chat.offered = slots;
     chat.awaiting = 'slot';
     t.offeredSlots = true;
