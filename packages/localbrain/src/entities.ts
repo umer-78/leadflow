@@ -3,19 +3,24 @@
  * custom dictionary values (e.g. product or service names, typo tolerant).
  */
 import { Vocabulary } from './fuzzy.ts';
-import { normalize, stem, titleCase, tokenize } from './text.ts';
+import { normalize, stem, stripEnd, titleCase, tokenize } from './text.ts';
 
 // ---------------------------------------------------------------------------
 // Email / phone
 // ---------------------------------------------------------------------------
 
-const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/gi;
+// Bounded by the address limits (64-character local part, 63-character labels) and
+// anchored to the start of a run, so a long string with no "@" is scanned once, not
+// once per starting character.
+const EMAIL_RE = /(?<![a-z0-9._%+-])[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63}){0,8}\.[a-z]{2,24}/gi;
 
 export function extractEmails(text: string): string[] {
   return [...new Set((text.match(EMAIL_RE) ?? []).map((e) => e.toLowerCase()))];
 }
 
-const PHONE_RE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d[\d\s.-]{5,}\d/g;
+// at most 20 digits, spaces, dots and dashes between the first and last digit (longer
+// than any phone number), so a long run of spaces cannot make the scan quadratic
+const PHONE_RE = /(?<![\d+])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d[\d\s.-]{5,20}\d/g;
 
 /** Phone numbers with 7-15 digits, normalised to digits (leading + kept). */
 export function extractPhones(text: string): string[] {
@@ -164,11 +169,7 @@ export function extractName(text: string, options: { expectingName?: boolean } =
  * lower-cased word, so callers can plug in their own vocabulary.
  */
 export function bareName(text: string, isKnown: (word: string) => boolean = () => false, lenient = false): string | undefined {
-  const cleaned = text
-    .replace(EMAIL_RE, ' ')
-    .replace(PHONE_RE, ' ')
-    .trim()
-    .replace(/[.!,]+$/, '')
+  const cleaned = stripEnd(text.replace(EMAIL_RE, ' ').replace(PHONE_RE, ' ').trim(), '.!,')
     .replace(/^(?:it's|its|it is|this is|i'm|im|i am|name:?|my name:?)\s+/i, '')
     .trim();
   const words = cleaned.split(/\s+/).filter(Boolean);
@@ -295,7 +296,7 @@ export function extractDate(text: string, today: CalendarDate, options: DateOpti
   if ((m = /\b(today|tonight|this (?:morning|afternoon|evening))\b/.exec(t))) return found(today, m[0]);
   if ((m = /\b(tomorrow|tmrw|tmr|tomorow|tommorow|tommorrow)\b/.exec(t))) return found(addDays(today, 1), m[0]);
   if ((m = /\bin\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|a couple of|a few)\s+(days?|weeks?)\b/.exec(t))) {
-    const key = m[1].replace(/^a\s+/, '').replace(/\s+of$/, '');
+    const key = m[1].replace(/^a /, '').replace(/ of$/, '');
     const n = /^\d+$/.test(key) ? Number(key) : NUMBER_WORDS[key] ?? 1;
     return found(addDays(today, m[2].startsWith('week') ? n * 7 : n), m[0]);
   }

@@ -108,7 +108,7 @@ function inline(text: string): Node[] {
     const [all, bold, url, mail, phone] = m;
     if (bold) out.push(h('strong', {}, bold.slice(2, -2)));
     else if (url) {
-      const label = /google\.com\/maps/.test(url) ? 'Open in Maps' : url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40) + (url.length > 52 ? '…' : '');
+      const label = /^https:\/\/(?:www\.|maps\.)?google\.com\/maps(?:[/?#]|$)/.test(url) ? 'Open in Maps' : url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40) + (url.length > 52 ? '…' : '');
       out.push(h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, label));
     } else if (mail) out.push(h('a', { href: `mailto:${mail}` }, mail));
     else if (phone) out.push(h('a', { href: `tel:${phone.replace(/[^\d+]/g, '')}` }, phone));

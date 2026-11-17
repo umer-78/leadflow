@@ -4,6 +4,17 @@
  */
 
 /** Lower-case, strip accents, unify quotes/dashes and collapse whitespace. */
+/**
+ * The text without any of `chars` at its end ("Saturday?!" -> "Saturday"), in one
+ * pass: a regular expression like /[?.!]+$/ restarts at every punctuation mark of a
+ * long run that is not at the end, which is quadratic.
+ */
+export function stripEnd(text: string, chars: string): string {
+  let i = text.length;
+  while (i > 0 && chars.includes(text[i - 1])) i--;
+  return text.slice(0, i);
+}
+
 export function normalize(text: string): string {
   return text
     .normalize('NFKD')

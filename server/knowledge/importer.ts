@@ -60,6 +60,8 @@ export function isPublicAddress(address: string): boolean {
     if (ip === '::' || ip === '::1') return false;
     if (/^f[cd]/.test(ip) || /^fe[89ab]/.test(ip) || /^ff/.test(ip)) return false; // unique local, link-local, multicast
     if (ip.startsWith('::ffff:') || ip.startsWith('64:ff9b:') || ip.startsWith('2001:db8') || ip.startsWith('100::')) return false;
+    // 6to4 (2002::/16) and Teredo (2001:0::/32) carry an IPv4 address inside, which may be a private one
+    if (ip.startsWith('2002:') || /^2001:0{0,4}:/.test(ip)) return false;
     return true;
   }
   return false;
