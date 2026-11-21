@@ -81,7 +81,7 @@ Ranked by what prospects ask about and what moves results:
 - [Retell AI: AI dental receptionist](https://www.retellai.com/solutions/ai-dental-receptionist)
 - [DentalBase: AI receptionist for patient communication](https://www.dentalbase.ai/blogs/ai-receptionist/best-ai-dental-receptionist-for-patient-communication)
 - [Capterra: Weave vs NexHealth](https://www.capterra.com/compare/141842-182271/Weave-vs-NexHealth)
-- [NexHealth: NexHealth vs Weave](https://nexhealth.com/resources/nexhealth-vs-weave-comparison-2)
+- [NexHealth: Weave vs NexHealth](https://www.nexhealth.com/compare/weave)
 - [SoftwarePundit: NexHealth review and pricing](https://www.softwarepundit.com/node/471)
 - [Capterra: Arini](https://www.capterra.com/p/10036210/Arini/)
 - [ToolDirectory: Arini](https://tooldirectory.ai/tools/arini-ai-receptionist-dental-practices)
