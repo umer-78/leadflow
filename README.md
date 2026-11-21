@@ -1,5 +1,7 @@
 # LeadFlow
 
+[![LeadFlow AI: the live site](.github/preview.jpg)](https://umer-78.github.io/leadflow/)
+
 An AI receptionist and lead pipeline for dental clinics. It answers patients on the clinic's
 website 24/7, captures and scores leads, offers real open appointment times and books them,
 spots emergencies, follows up by email, and gives the team one dashboard for all of it.

@@ -51,6 +51,8 @@ export interface ChatTransport {
 export interface ChatOptions {
   /** Running inside the website widget's iframe (shows a close button). */
   embedded?: boolean;
+  /** Focus the message box once the chat has loaded (default true). A chat inside a longer page sets false, so opening the page does not scroll down to it. */
+  focusOnLoad?: boolean;
   onClose?: () => void;
   /** Send this message as soon as the chat is ready (e.g. "I'd like to book"). */
   autoMessage?: string;
@@ -492,7 +494,7 @@ export function mountChat(root: HTMLElement, transport: ChatTransport, options: 
       input.disabled = false;
       chat.setAttribute('aria-busy', 'false');
       if (options.autoMessage && !startData.history.length) void submit(options.autoMessage);
-      else if (!options.embedded) input.focus();
+      else if (!options.embedded && options.focusOnLoad !== false) input.focus();
     } catch (err) {
       name.textContent = 'Chat unavailable';
       chat.setAttribute('aria-busy', 'false');

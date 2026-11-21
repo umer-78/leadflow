@@ -150,7 +150,8 @@ function renderPanel(): void {
 function start(): void {
   const root = document.getElementById('lf-demo-chat');
   if (!root) return;
-  mountChat(root, transport, { instant: false });
+  // the demo sits halfway down the page: opening the page must not jump to it
+  mountChat(root, transport, { instant: false, focusOnLoad: false });
   renderPanel();
   document.querySelectorAll<HTMLButtonElement>('[data-lf-example]').forEach((b) =>
     b.addEventListener('click', () => {
